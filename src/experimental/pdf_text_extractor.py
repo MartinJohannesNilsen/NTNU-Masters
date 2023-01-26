@@ -11,7 +11,8 @@ src_folder = Path(__file__).resolve().parents[1]
 doc_path = Path(Path(__file__).resolve().parents[2]/"schoolshootersinfo")
 
 files = doc_path.glob("**/*.pdf")
-print(f"Found these pdf files at {doc_path}:\n{files}")
+fnames = [f.name for f in files]
+print(f"Found these pdf files at {doc_path}:\n{fnames}")
 
 for file in files:
     reader = PdfReader(str(file.resolve()))
