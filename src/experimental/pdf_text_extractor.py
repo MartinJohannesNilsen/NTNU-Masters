@@ -13,7 +13,7 @@ print(doc_path)
 #doc_path = f"{doc_path}/**/*.pdf"
 print(doc_path)
 
-files = doc_path.glob("**/*")
+files = doc_path.glob("**/*.pdf")
 print(files)
 
 for file in files:
