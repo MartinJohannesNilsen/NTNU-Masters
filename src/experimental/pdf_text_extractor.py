@@ -1,11 +1,17 @@
 # importing required modules
-from pathlib import Path
-import fitz
+from pathlib import Path, PureWindowsPath
+from tika import parser
+import glob
 
-# Opening document
-doc = fitz.open(Path(__file__).parents[2] / 'schoolshootersinfo/William_Atchison/documents/atchison_online_1.0.pdf')
+#print(__file__)
 
-# Extracting text
-for page in doc:
-    text = page.get_text()
-    print(text)
+doc_path = Path(f"{__file__}/../../schoolshootersinfo").resolve()
+print(doc_path)
+doc_path = f"{doc_path}/**/*.pdf"
+print(doc_path)
+
+files = glob.glob(doc_path, recursive=True)
+print(files)
+
+for file in files:
+    print(file)
