@@ -1,17 +1,9 @@
 # importing required modules
-from pathlib import Path, PureWindowsPath
-from tika import parser
-import glob
+from pathlib import Path
 
-#print(__file__)
+doc_path = Path(__file__).resolve().parents[2] / "schoolshootersinfo"
+print("Path:", doc_path)
 
-doc_path = Path(f"{__file__}/../../schoolshootersinfo").resolve()
-print(doc_path)
-doc_path = f"{doc_path}/**/*.pdf"
-print(doc_path)
-
-files = glob.glob(doc_path, recursive=True)
-print(files)
-
-for file in files:
-    print(file)
+files = (doc_path).rglob("*.pdf")
+for path in files:
+    print(path)
