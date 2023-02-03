@@ -11,8 +11,6 @@ src_folder = Path(__file__).resolve().parents[1]
 doc_path = Path(Path(__file__).resolve().parents[2]/"schoolshootersinfo")
 
 files = doc_path.glob("**/*.pdf")
-fnames = [f.name for f in files]
-print(f"Found these pdf files at {doc_path}:\n{fnames}")
 
 for file in files:
     reader = PdfReader(str(file.resolve()))
@@ -24,5 +22,6 @@ for file in files:
             text = page.extract_text()
             text = "".join(c if unicodedata.category(c) != "Co" else " " for c in text).strip() # Remove unwanted special chars and encode to utf-8
             text = re.sub(r'(-+)', '', text) # Some texts contain ----- as separators. Remove these separators
+            text = re.sub(r'(\n+)', '', text)
             f.write(text)
         
