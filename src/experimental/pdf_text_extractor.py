@@ -8,14 +8,14 @@ root_folder = Path(__file__).resolve().parents[2]
 src_folder = Path(__file__).resolve().parents[1]
 
 # Path to pdfs containing school shooters' texts
-doc_path = Path(Path(__file__).resolve().parents[2]/"schoolshootersinfo")
+doc_path = Path(Path(__file__).resolve().parents[2] / "schoolshootersinfo")
 
 files = doc_path.glob("**/*.pdf")
 
 for file in files:
     reader = PdfReader(str(file.resolve()))
     fname = file.stem
-    fpath = src_folder/"raw_text"/f"{fname}.txt"
+    fpath = src_folder / "raw_text" / f"{fname}.txt"
 
     with open(fpath, "w+", encoding="utf-8") as f:
         for page in reader.pages:
@@ -24,4 +24,3 @@ for file in files:
             text = re.sub(r'(-+)', '', text) # Some texts contain ----- as separators. Remove these separators
             text = re.sub(r'(\n+)', '', text)
             f.write(text)
-        
