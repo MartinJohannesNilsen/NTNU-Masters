@@ -75,7 +75,7 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-d", "--dataset", type=click.Choice(["schoolshooters", "stairtwitterarchive", "masshooters", "manifestos", "all"]), default="schoolshooters", help="Folder to create dataframe from")
+@click.option("-d", "--dataset", type=click.Choice(["schoolshooters", "stairtwitterarchive", "masshooters", "manifestos", "twitter", "all"]), default="schoolshooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
 @click.option("-o", "--out_dir", default=(Path(__file__).parent / "outputs"), help="Save to folder")
 @click.option("-f", "--format", type=click.Choice(["csv", "xlsx"]), default="csv", help="Save to spreadsheet")
