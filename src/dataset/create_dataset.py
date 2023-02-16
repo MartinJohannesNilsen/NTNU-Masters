@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 import click
 import pandas as pd
+import xlsxwriter
 
 
 def append_date_columns(dataframe: pd.DataFrame):
@@ -15,10 +16,17 @@ def append_date_columns(dataframe: pd.DataFrame):
         date_dict["day"].append(day)
     for key in date_dict.keys():
         df[key] = date_dict[key]
+
+    # Need to format some of the columns to types
+    df["date"] = pd.to_datetime(df['date'])
+    # df["year"] = df["year"].astype("Int64")
+    # df["month"] = df["month"].astype("Int64")
+    # df["day"] = df["day"].astype("Int64")
+
     return df
 
 
-def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None):
+def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None, delimiter="‎ "):
     assert list_of_files, "Need to define a list of paths to create dataframe from"
 
     # Create a dictionary of csv files per perpetrator
@@ -29,14 +37,36 @@ def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None):
     # Create a dictionary of dataframes per perpetrator
     dfs = dict()
     for key, value in paths.items():
-        dfs[key] = pd.read_csv(value, delimiter="‎ ", engine='python', encoding="utf-8")
+        dfs[key] = pd.read_csv(value, delimiter=delimiter, engine='python', encoding="utf-8")
     
     return dfs
+
+def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_dir_if_not_exists: bool = True, index: bool = False) -> bool:
+    assert fname.split(".")[-1] == "xlsx", "Format needs to be excel"
+    if create_dir_if_not_exists:
+        out_dir.mkdir(parents=True, exist_ok=True) # Make sure the folder exists
+
+    
+    with pd.ExcelWriter(out_dir / fname, engine="xlsxwriter", datetime_format="DD-MM-YYYY") as writer:
+        workbook = writer.book
+        format = workbook.add_format({'text_wrap': True})
+        df.to_excel(writer, sheet_name="Sheet1", index=False, na_rep='NaN')
+        worksheet = writer.sheets['Sheet1']
+        
+        for column in df:
+            column_length = max(df[column].astype(str).map(len).max(), len(column))
+            col_idx = df.columns.get_loc(column)
+            if col_idx == 2:
+                worksheet.set_column(2, 2, 100, format)
+            else:
+                worksheet.set_column(col_idx, col_idx, column_length)
+        
+
     
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-d", "--dataset", type=click.Choice(["schoolshootersinfo", "masshooters", "manifestos", "all"]), default="schoolshootersinfo", help="Folder to create dataframe from")
+@click.option("-d", "--dataset", type=click.Choice(["schoolshooters", "masshooters", "manifestos", "all"]), default="schoolshooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
 @click.option("-s", "--save", is_flag=True, help="Save to spreadsheet")
 def main(dataset, verbose, save):
@@ -46,9 +76,9 @@ def main(dataset, verbose, save):
 
     # Create dictionary of dataframes
     if dataset == "all":
-        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data").rglob("*.csv"))
+        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data").rglob("data.csv"))
     else:
-        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data" / dataset).rglob("*.csv"))
+        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data" / dataset).rglob("data.csv"))
     
     # Append year, month and day columns, while creating a list of dataframes 
     list_of_names = list(dfs.keys())
@@ -70,15 +100,16 @@ def main(dataset, verbose, save):
     if save:
         # Create folder and define file name
         out_dir = (Path(__file__).parent / "outputs")
-        out_dir.mkdir(parents=True, exist_ok=True) # Make sure the folder exists
-        fname = f"{dataset}.xlsx" 
-        
+        fname = f"{dataset}.xlsx"
+
         # Print if verbose
         if verbose > 0:
             print("Saving to file:", f"{out_dir.name}/{fname}")
         
         # Create file
-        df.to_excel(out_dir / fname, index=False)
+        # Drop year, month, day from excel-dataframe
+        excel_df = df.drop(["year", "month", "day"], axis=1)
+        _write_formatted_xlsx(df=excel_df, fname=fname, out_dir=out_dir)
 
 if __name__ == "__main__":
     main()
