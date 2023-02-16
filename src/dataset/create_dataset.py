@@ -1,3 +1,4 @@
+from csv import QUOTE_NONE
 from functools import partial
 from pathlib import Path
 from typing import List
@@ -26,7 +27,7 @@ def append_date_columns(dataframe: pd.DataFrame):
     return df
 
 
-def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None, delimiter="‎ "):
+def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None, delimiter="‎"):
     assert list_of_files, "Need to define a list of paths to create dataframe from"
 
     # Create a dictionary of csv files per perpetrator
@@ -37,7 +38,7 @@ def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None, delimi
     # Create a dictionary of dataframes per perpetrator
     dfs = dict()
     for key, value in paths.items():
-        dfs[key] = pd.read_csv(value, delimiter=delimiter, engine='python', encoding="utf-8")
+        dfs[key] = pd.read_csv(value, delimiter=delimiter, engine='python', encoding="utf-8", quoting=QUOTE_NONE)
     
     return dfs
 
@@ -53,20 +54,22 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
         df.to_excel(writer, sheet_name="Sheet1", index=False, na_rep='NaN')
         worksheet = writer.sheets['Sheet1']
         
+        # Auto-adjust column width to max
         for column in df:
             column_length = max(df[column].astype(str).map(len).max(), len(column))
             col_idx = df.columns.get_loc(column)
-            if col_idx == 2:
-                worksheet.set_column(2, 2, 100, format)
-            else:
-                worksheet.set_column(col_idx, col_idx, column_length)
+            worksheet.set_column(col_idx, col_idx, column_length)
+        
+        # Some formatting for selected rows
+        worksheet.set_column(0, 0, 6)
+        worksheet.set_column(2, 2, 100, format)
         
 
     
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-d", "--dataset", type=click.Choice(["schoolshooters", "masshooters", "manifestos", "all"]), default="schoolshooters", help="Folder to create dataframe from")
+@click.option("-d", "--dataset", type=click.Choice(["schoolshooters", "stairtwitterarchive", "masshooters", "manifestos", "all"]), default="schoolshooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
 @click.option("-s", "--save", is_flag=True, help="Save to spreadsheet")
 def main(dataset, verbose, save):
