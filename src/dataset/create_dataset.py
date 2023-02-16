@@ -1,10 +1,11 @@
-from csv import QUOTE_NONE
+from csv import QUOTE_NONE, field_size_limit
 from functools import partial
 from pathlib import Path
 from typing import List
 import click
 import pandas as pd
-import xlsxwriter
+import sys
+field_size_limit(sys.maxsize)
 
 
 def append_date_columns(dataframe: pd.DataFrame):
@@ -42,11 +43,16 @@ def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None, delimi
     
     return dfs
 
+def _write_csv(df: pd.DataFrame, fname: str, out_dir: Path, create_dir_if_not_exists: bool = True, index: bool = False) -> bool:
+    assert fname.split(".")[-1] == "csv", "Format needs to be csv"
+    if create_dir_if_not_exists:
+        out_dir.mkdir(parents=True, exist_ok=True) # Make sure the folder exists
+    df.to_csv(out_dir / fname, sep="‎", header=True, index=False, date_format="%Y-%m-%d")
+
 def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_dir_if_not_exists: bool = True, index: bool = False) -> bool:
     assert fname.split(".")[-1] == "xlsx", "Format needs to be excel"
     if create_dir_if_not_exists:
         out_dir.mkdir(parents=True, exist_ok=True) # Make sure the folder exists
-
     
     with pd.ExcelWriter(out_dir / fname, engine="xlsxwriter", datetime_format="DD-MM-YYYY") as writer:
         workbook = writer.book
@@ -71,8 +77,9 @@ click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("-d", "--dataset", type=click.Choice(["schoolshooters", "stairtwitterarchive", "masshooters", "manifestos", "all"]), default="schoolshooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
-@click.option("-s", "--save", is_flag=True, help="Save to spreadsheet")
-def main(dataset, verbose, save):
+@click.option("-o", "--out_dir", default=(Path(__file__).parent / "outputs"), help="Save to folder")
+@click.option("-f", "--format", type=click.Choice(["csv", "xlsx"]), default="csv", help="Save to spreadsheet")
+def main(dataset, verbose, out_dir, format):
 
     if verbose > 0:
         print("Creating dataframe from folder:", dataset)
@@ -100,19 +107,22 @@ def main(dataset, verbose, save):
         print(df.info())
         print("-"*40)
     
-    if save:
-        # Create folder and define file name
-        out_dir = (Path(__file__).parent / "outputs")
-        fname = f"{dataset}.xlsx"
+    # Create folder and define file name
+    out_dir = Path(out_dir)
+    fname = f"{dataset}.{format}"
 
-        # Print if verbose
-        if verbose > 0:
-            print("Saving to file:", f"{out_dir.name}/{fname}")
-        
-        # Create file
-        # Drop year, month, day from excel-dataframe
+    # Print if verbose
+    if verbose > 0:
+        print("Saving to file:", f"{out_dir.name}/{fname}")
+    
+    # Create file
+    # Drop year, month, day from excel-dataframe
+    if format == "xlsx":
         excel_df = df.drop(["year", "month", "day"], axis=1)
         _write_formatted_xlsx(df=excel_df, fname=fname, out_dir=out_dir)
+    else:
+        df = df.drop(["index", "year", "month", "day", "name"], axis=1)
+        _write_csv(df=df, fname=fname, out_dir=out_dir)
 
 if __name__ == "__main__":
     main()
