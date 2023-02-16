@@ -5,4 +5,4 @@ tweepy
 tika
 tabulate
 click
-openpyxl
+xlsxwriter
