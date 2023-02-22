@@ -6,3 +6,4 @@ tika
 tabulate
 click
 xlsxwriter
+nltk
