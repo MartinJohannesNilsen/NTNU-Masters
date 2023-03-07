@@ -121,7 +121,8 @@ def main(dataset, verbose, out_dir, format):
         excel_df = df.drop(["year", "month", "day"], axis=1)
         _write_formatted_xlsx(df=excel_df, fname=fname, out_dir=out_dir)
     else:
-        df = df.drop(["index", "year", "month", "day", "name"], axis=1)
+        # df = df.drop(["index", "year", "month", "day", "name"], axis=1)
+        df = df.drop(["index", "year", "month", "day"], axis=1) # want to include name
         _write_csv(df=df, fname=fname, out_dir=out_dir)
 
 if __name__ == "__main__":

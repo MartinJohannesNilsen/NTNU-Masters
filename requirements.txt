@@ -2,7 +2,6 @@ pandas
 ipykernel
 python-dotenv
 tweepy
-tika
 tabulate
 click
 xlsxwriter
