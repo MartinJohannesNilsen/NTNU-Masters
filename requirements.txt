@@ -6,3 +6,6 @@ tabulate
 click
 xlsxwriter
 nltk
+torch
+transformers
+matplotlib
