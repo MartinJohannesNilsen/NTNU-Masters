@@ -1,11 +1,23 @@
 # Imports
-import numpy as np
-import pandas as pd
 import torch
+from nltk.tokenize import RegexpTokenizer
+from torchtext.vocab import FastText, GloVe
 from transformers import BertTokenizer
 
 
-def get_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: str = 'bert-base-uncased', do_lower_case: bool = False):
+def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: str = 'bert-base-uncased', do_lower_case: bool = False, to_list: bool = False):
+    """A method for generating BERT word embeddings using a pre-trained tokenizer. Returns result as either torch tensors (default) or regular lists.
+
+    Args:
+        text (str): Input string.
+        chunk_size (int, optional): The size of chunks. Padding will be applied. Defaults to 512.
+        pretrained_tokenizer (str, optional): Which pre-trained tokenizer to use. Defaults to 'bert-base-uncased'.
+        do_lower_case (bool, optional): If True, lowercasing will be applied. Defaults to False.
+        to_list (bool, optional): If True, returns a 2d array with the chunked lists. Defaults to False.
+
+    Returns:
+        list or torch.tensor: A 2d array of chunked word embeddings.
+    """
 
     # Load pre-trained model tokenizer (vocabulary)
     tokenizer = BertTokenizer.from_pretrained(pretrained_tokenizer, do_lower_case=do_lower_case)
@@ -35,6 +47,9 @@ def get_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: 
     input_ids = torch.stack(input_id_chunks)
     attention_mask = torch.stack(mask_chunks)
 
+    if to_list:
+        return input_ids.tolist()
+
     # Create return dictionary
     input_dict = {
         'input_ids': input_ids.long(),
@@ -42,3 +57,52 @@ def get_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: 
     }
 
     return input_dict
+
+
+
+def get_glove_word_vectors(text: str, size_small: bool = True, to_list: bool = False):
+    """Generates word vectors in the format of GloVe, using torch.vocab.
+
+    Args:
+        text (str): Input string.
+        size_small (bool, optional): If False, use the 2.18GB pre-trained model instead of the 862MB one. Defaults to True.
+        to_list (bool, optional): If True, returns a 2d array with the word vectors. Defaults to False.
+
+    Returns:
+        list or torch.tensor: A 2D array containing all the word vectors.
+    """
+    tokenizer = RegexpTokenizer("[\w']+")
+    words = tokenizer.tokenize(text)
+    # vec = GloVe(name='6B', dim=50) # 862MB
+    vec = GloVe(name='840B', dim=300) # 2.18GB
+    res = vec.get_vecs_by_tokens(words, lower_case_backup=True)
+    if to_list: return res.tolist()
+    else: return res
+
+
+def get_fasttext_word_vectors(text: str, to_list: bool = False):
+    """Generates word vectors in the format of FastText, using torch.vocab.
+
+    Args:
+        text (str): Input string.
+        to_list (bool, optional): If True, returns a 2d array with the word vectors. Defaults to False.
+
+    Returns:
+        list or torch.tensor: A 2D array containing all the word vectors.
+    """
+    tokenizer = RegexpTokenizer("[\w']+")
+    words = tokenizer.tokenize(text)
+    vec = FastText(language="en") # 6.6GB
+    res = vec.get_vecs_by_tokens(words, lower_case_backup=True)
+    if to_list: return res.tolist()
+    else: return res
+
+
+if __name__ == "__main__":
+    example1 = "It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?"
+    example2 = "Just because you’ve got the emotional range of a teaspoon doesn’t mean we all have."
+    example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
+
+    # print(get_bert_word_embeddings(example1, to_list=True))
+    # print(get_glove_word_vectors(example1))
+    print(get_fasttext_word_vectors(example1, to_list=True))

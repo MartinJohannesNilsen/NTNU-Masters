@@ -7,5 +7,6 @@ click
 xlsxwriter
 nltk
 torch
+torchtext
 transformers
 matplotlib
