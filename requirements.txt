@@ -9,4 +9,5 @@ nltk
 torch
 torchtext
 transformers
+scikit-learn
 matplotlib

@@ -16,7 +16,7 @@ def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokeni
         to_list (bool, optional): If True, returns a 2d array with the chunked lists. Defaults to False.
 
     Returns:
-        list or torch.tensor: A 2d array of chunked word embeddings.
+        list or torch.tensor: A 2d array of chunked word embeddings. Defaults to torch.tensor.
     """
 
     # Load pre-trained model tokenizer (vocabulary)
@@ -69,7 +69,7 @@ def get_glove_word_vectors(text: str, size_small: bool = True, to_list: bool = F
         to_list (bool, optional): If True, returns a 2d array with the word vectors. Defaults to False.
 
     Returns:
-        list or torch.tensor: A 2D array containing all the word vectors.
+        list or torch.tensor: A 2D array containing all the word vectors. Defaults to torch.tensor.
     """
     tokenizer = RegexpTokenizer("[\w']+")
     words = tokenizer.tokenize(text)
@@ -88,7 +88,7 @@ def get_fasttext_word_vectors(text: str, to_list: bool = False):
         to_list (bool, optional): If True, returns a 2d array with the word vectors. Defaults to False.
 
     Returns:
-        list or torch.tensor: A 2D array containing all the word vectors.
+        list or torch.tensor: A 2D array containing all the word vectors. Defaults to torch.tensor.
     """
     tokenizer = RegexpTokenizer("[\w']+")
     words = tokenizer.tokenize(text)
