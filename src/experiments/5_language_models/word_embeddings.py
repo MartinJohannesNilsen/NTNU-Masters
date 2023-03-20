@@ -1,8 +1,14 @@
 # Imports
 import torch
-from nltk.tokenize import RegexpTokenizer
+from nltk.tokenize import RegexpTokenizer, word_tokenize
+from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
 from transformers import BertTokenizer
+from bs4 import BeautifulSoup
+import string
+import re
+import traceback
+from typing import List
 
 
 def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: str = 'bert-base-uncased', do_lower_case: bool = False, to_list: bool = False):
@@ -59,8 +65,22 @@ def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokeni
     return input_dict
 
 
+def preprocess_text(text: str, full_clean_url: bool = True):
+    soup = BeautifulSoup(text, "html.parser")
+    text = soup.get_text()
 
-def get_glove_word_vectors(text: str, size_small: bool = True, to_list: bool = False):
+    tokenizer = RegexpTokenizer("[\w']+")
+    words = tokenizer.tokenize(text)
+
+    url_replacement = "" if full_clean_url else "URLHYPERLINK"
+
+    words = [re.sub(r'http+|www+', url_replacement, word).lower() for word in words if word not in stopwords.words("english")] 
+
+    return [word for word in words if word != ""]
+
+    
+vec = GloVe(name='6B', dim=50) # 2.18GB
+def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_list: bool = False):
     """Generates word vectors in the format of GloVe, using torch.vocab.
 
     Args:
@@ -71,10 +91,8 @@ def get_glove_word_vectors(text: str, size_small: bool = True, to_list: bool = F
     Returns:
         list or torch.tensor: A 2D array containing all the word vectors. Defaults to torch.tensor.
     """
-    tokenizer = RegexpTokenizer("[\w']+")
-    words = tokenizer.tokenize(text)
     # vec = GloVe(name='6B', dim=50) # 862MB
-    vec = GloVe(name='840B', dim=300) # 2.18GB
+    #vec = GloVe(name='840B', dim=300) # 2.18GB
     res = vec.get_vecs_by_tokens(words, lower_case_backup=True)
     if to_list: return res.tolist()
     else: return res
