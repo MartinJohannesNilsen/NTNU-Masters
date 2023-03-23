@@ -29,17 +29,20 @@ datasets = {
     "manifestos": base_path / "manifestos.csv",
     "stair_twitter_archive": base_path / "stair_twitter_archive.csv",
     "twitter": base_path / "twitter.csv",
+    "stream_of_consciouness": base_path / "stream_of_consciousness.csv"
 }
 
 schoolshootersinfo_df = pd.read_csv(datasets["school_shooters"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
 #manifesto_df = pd.read_csv(datasets["manifestos"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
 stair_twitter_archive_df = pd.read_csv(datasets["stair_twitter_archive"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
 twitter_df = pd.read_csv(datasets["twitter"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
+stream_of_consciouness_df = pd.read_csv(datasets["stream_of_consciousness"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
 
 schoolshootersinfo_df["shooter"] = 1
 #manifesto_df["shooter"] = 1
 stair_twitter_archive_df["shooter"] = 1
 twitter_df["shooter"] = 0
+stream_of_consciouness_df["shooter"] = 0
 
 print(schoolshootersinfo_df.text.str.len().max())
 #print(manifesto_df.text.str.len().max())
@@ -52,25 +55,46 @@ import re
 from nltk.tokenize import RegexpTokenizer, word_tokenize
 from nltk.corpus import stopwords
 import nltk
-from word_embeddings import preprocess_text, get_glove_word_vectors
+from word_embeddings import get_glove_word_vectors, preprocess_text
 import itertools
 import seaborn as sns
 from sklearn.model_selection import train_test_split 
 
-#nltk.download()
 
-shooter_df = pd.concat([schoolshootersinfo_df, stair_twitter_archive_df])[:100]
+shooter_df = pd.concat([schoolshootersinfo_df, stair_twitter_archive_df], ignore_index=True)[:100]
 non_shooter_df = twitter_df[:100]
-shooter_df["text"].map(lambda a: preprocess_text(a))
-non_shooter_df["text"].map(lambda a: preprocess_text(a))
+whole_corpus_df = pd.concat([shooter_df, non_shooter_df], ignore_index=True).sample(frac=1)
+whole_corpus_df["text"] = whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(preprocess_text(a)))
 
 
-shooter_words = list(itertools.chain.from_iterable(shooter_df["text"]))
+x_train, x_test, y_train, y_test = train_test_split(whole_corpus_df["text"], whole_corpus_df["shooter"], test_size=0.1)
+x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1)
+shapes = [list(t.shape) for t in x_train]
+dic_size = [dims[0] for dims in shapes]
+print(shapes)
+
+""" max_dic_size = max(dic_size)
+min_dic_size = min(dic_size)
+print(min_dic_size)
+print(max_dic_size)
+for x in x_train:
+    if x.shape[0] == min_dic_size:
+        print("x_shape: ", x.shape)
+        i = 0
+        for _ in x:
+            print(_)
+            i += 1
+            print("i: ", i) """
+
+
+
+
+""" shooter_words = list(itertools.chain.from_iterable(shooter_df["text"]))
 non_shooter_words = list(itertools.chain.from_iterable(non_shooter_df["text"]))
 #print(non_shooter_words)
 
-shooter_word_freqs = nltk.FreqDist(shooter_words)
-non_shooter_word_freqs = nltk.FreqDist(non_shooter_words)
+#shooter_word_freqs = nltk.FreqDist(shooter_words)
+#non_shooter_word_freqs = nltk.FreqDist(non_shooter_words)
 
 whole_corpus_df = pd.concat([shooter_df, non_shooter_df]).sample(frac=1)
 whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a))
@@ -78,7 +102,7 @@ whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a))
 x_train, x_test, y_train, y_test = train_test_split(whole_corpus_df["text"], whole_corpus_df["shooter"], test_size=0.1)
 x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1)
 
-print(x_train)
+print(x_train) """
 
 """ sns.set_style("darkgrid")
 shooter_word_freqs.plot(20)

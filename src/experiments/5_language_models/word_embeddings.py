@@ -79,7 +79,6 @@ def preprocess_text(text: str, full_clean_url: bool = True):
     return [word for word in words if word != ""]
 
     
-vec = GloVe(name='6B', dim=50) # 2.18GB
 def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_list: bool = False):
     """Generates word vectors in the format of GloVe, using torch.vocab.
 
@@ -93,7 +92,8 @@ def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_l
     """
     # vec = GloVe(name='6B', dim=50) # 862MB
     #vec = GloVe(name='840B', dim=300) # 2.18GB
-    res = vec.get_vecs_by_tokens(words, lower_case_backup=True)
+    glove_vec = GloVe(name='6B', dim=50) # 2.18GB
+    res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
     if to_list: return res.tolist()
     else: return res
 
