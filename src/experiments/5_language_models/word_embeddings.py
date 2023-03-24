@@ -9,6 +9,7 @@ import string
 import re
 import traceback
 from typing import List
+import torch.nn.functional as F
 
 
 def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: str = 'bert-base-uncased', do_lower_case: bool = False, to_list: bool = False):
@@ -92,8 +93,9 @@ def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_l
     """
     # vec = GloVe(name='6B', dim=50) # 862MB
     #vec = GloVe(name='840B', dim=300) # 2.18GB
-    glove_vec = GloVe(name='6B', dim=50) # 2.18GB
+    glove_vec = GloVe(name='6B', dim=emb_dim) # 2.18GB
     res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
+
     if to_list: return res.tolist()
     else: return res
 
