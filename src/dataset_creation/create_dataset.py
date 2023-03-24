@@ -1,5 +1,6 @@
 from csv import QUOTE_NONE, field_size_limit
 from functools import partial
+import os
 from pathlib import Path
 from typing import List
 import click
@@ -83,12 +84,14 @@ def main(dataset, verbose, out_dir, format):
 
     if verbose > 0:
         print("Creating dataframe from folder:", dataset)
+        if verbose > 1 and dataset != "all":
+            print(f"Full path: {Path(os.path.abspath(__file__)).parents[0] / 'data' / dataset}")
 
     # Create dictionary of dataframes
     if dataset == "all":
-        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data").rglob("data.csv"))
+        dfs = create_dictionary_of_dfs_from_paths((Path(os.path.abspath(__file__)).parents[2] / "data").rglob("data.csv"))
     else:
-        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data" / dataset).rglob("data.csv"))
+        dfs = create_dictionary_of_dfs_from_paths((Path(os.path.abspath(__file__)).parents[2] / "data" / dataset).rglob("data.csv"))
     
     # Append year, month and day columns, while creating a list of dataframes 
     list_of_names = list(dfs.keys())
