@@ -1,4 +1,6 @@
 # Imports
+import os
+from pathlib import Path
 import torch
 from nltk.tokenize import RegexpTokenizer, word_tokenize
 from nltk.corpus import stopwords
@@ -117,13 +119,8 @@ def get_fasttext_word_vectors(text: str, to_list: bool = False):
     else: return res
 
 
-
-
 def _test(text, type: str):
     assert type == "bert" or type == "glove" or type == "fasttext", "Type not defined!"
-    # example1 = "It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?"
-    # example2 = "Just because you’ve got the emotional range of a teaspoon doesn’t mean we all have."
-    # example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
 
     if type == "bert":
         print(get_bert_word_embeddings(text))
@@ -132,6 +129,35 @@ def _test(text, type: str):
     elif type == "fasttext":
         print(get_fasttext_word_vectors(text))
 
+def save(text, type: str, path: str):
+    assert type == "bert" or type == "glove" or type == "fasttext", "Type not defined!"
+    
+    if type == "bert":
+        torch.save(get_bert_word_embeddings(text), path)
+    elif type == "glove":
+        torch.save(get_glove_word_vectors(text), path)
+    elif type == "fasttext":
+        torch.save(get_fasttext_word_vectors(text), path)
+
+def load(path):
+    return torch.load(path)
+
 
 if __name__ == "__main__":
-    _test("It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?", "fasttext")
+    
+    # Test
+    example1 = "It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?"
+    example2 = "Just because you’ve got the emotional range of a teaspoon doesn’t mean we all have."
+    example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
+    #_test(example1, "fasttext")
+    
+    # Save
+    type = "bert" 
+    # type = "glove" 
+    # type = "fasttext" 
+    path = Path(os.path.abspath(__file__)).parents[1] / "features" / f"example1_{type}.pt"
+    # save(example1, type, path)
+
+    # Load
+    tensor = load(path)
+    print(tensor)
