@@ -5,7 +5,7 @@ from typing import List
 import click
 import pandas as pd
 import sys
-field_size_limit(sys.maxsize)
+#field_size_limit(sys.maxsize)
 
 
 def append_date_columns(dataframe: pd.DataFrame):
