@@ -5,7 +5,7 @@ from torchtext.vocab import FastText, GloVe
 from transformers import BertTokenizer
 
 
-def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokenizer: str = 'bert-base-uncased', do_lower_case: bool = False, to_list: bool = False):
+def get_bert_word_embeddings(text: str, chunk_size: int = 512, tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False), to_list: bool = False, truncate: bool = False):
     """A method for generating BERT word embeddings using a pre-trained tokenizer. Returns result as either torch tensors (default) or regular lists.
 
     Args:
@@ -18,12 +18,13 @@ def get_bert_word_embeddings(text: str, chunk_size: int = 512, pretrained_tokeni
     Returns:
         list or torch.tensor: A 2d array of chunked word embeddings. Defaults to torch.tensor.
     """
-
-    # Load pre-trained model tokenizer (vocabulary)
-    tokenizer = BertTokenizer.from_pretrained(pretrained_tokenizer, do_lower_case=do_lower_case)
     
     # Tokenize and return tensors
-    tokens = tokenizer.encode_plus(text, add_special_tokens=False, return_tensors="pt")
+    if truncate:
+        tokens = tokenizer.encode_plus(text, add_special_tokens=False, return_tensors="pt", truncation=truncate, max_length = chunk_size)
+    else:   
+        tokens = tokenizer.encode_plus(text, add_special_tokens=False, return_tensors="pt")
+    
     
     # Split into chunks of 510 tokens, we also convert to list (default is tuple which is immutable)
     input_id_chunks = list(tokens['input_ids'][0].split(chunk_size - 2))
