@@ -5,9 +5,7 @@ from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
 from transformers import BertTokenizer
 from bs4 import BeautifulSoup
-import string
 import re
-import traceback
 from typing import List
 import torch.nn.functional as F
 
@@ -81,7 +79,7 @@ def preprocess_text(text: str, full_clean_url: bool = True):
     return [word for word in words if word != ""]
 
     
-def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_list: bool = False):
+def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_list: bool = False, emb_dim=50):
     """Generates word vectors in the format of GloVe, using torch.vocab.
 
     Args:
@@ -119,11 +117,21 @@ def get_fasttext_word_vectors(text: str, to_list: bool = False):
     else: return res
 
 
-if __name__ == "__main__":
-    example1 = "It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?"
-    example2 = "Just because you’ve got the emotional range of a teaspoon doesn’t mean we all have."
-    example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
 
-    # print(get_bert_word_embeddings(example1, to_list=True))
-    # print(get_glove_word_vectors(example1))
-    print(get_fasttext_word_vectors(example1, to_list=True))
+
+def _test(text, type: str):
+    assert type == "bert" or type == "glove" or type == "fasttext", "Type not defined!"
+    # example1 = "It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?"
+    # example2 = "Just because you’ve got the emotional range of a teaspoon doesn’t mean we all have."
+    # example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
+
+    if type == "bert":
+        print(get_bert_word_embeddings(text))
+    elif type == "glove":
+        print(get_glove_word_vectors(text))
+    elif type == "fasttext":
+        print(get_fasttext_word_vectors(text))
+
+
+if __name__ == "__main__":
+    _test("It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?", "fasttext")
