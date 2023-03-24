@@ -11,3 +11,6 @@ torchtext
 transformers
 scikit-learn
 matplotlib
+scikit-learn
+gensim
+bcolz
