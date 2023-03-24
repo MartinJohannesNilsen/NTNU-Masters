@@ -1,5 +1,6 @@
 from csv import QUOTE_NONE, field_size_limit
 from functools import partial
+import os
 from pathlib import Path
 from typing import List
 import click
@@ -75,7 +76,7 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-d", "--dataset", type=click.Choice(["school_shooters", "stair_twitter_archive", "mass_shooters", "manifestos", "twitter", "all"]), default="school_shooters", help="Folder to create dataframe from")
+@click.option("-d", "--dataset", type=click.Choice(["school_shooters", "stair_twitter_archive", "stream_of_consciousness", "manifestos", "twitter", "all"]), default="school_shooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
 @click.option("-o", "--out_dir", default=(Path(__file__).parent / "data"), help="Save to folder")
 @click.option("-f", "--format", type=click.Choice(["csv", "xlsx"]), default="csv", help="Save to spreadsheet")
@@ -83,12 +84,14 @@ def main(dataset, verbose, out_dir, format):
 
     if verbose > 0:
         print("Creating dataframe from folder:", dataset)
+        if verbose > 1 and dataset != "all":
+            print(f"Full path: {Path(os.path.abspath(__file__)).parents[0] / 'data' / dataset}")
 
     # Create dictionary of dataframes
     if dataset == "all":
-        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data").rglob("data.csv"))
+        dfs = create_dictionary_of_dfs_from_paths((Path(os.path.abspath(__file__)).parents[2] / "data").rglob("data.csv"))
     else:
-        dfs = create_dictionary_of_dfs_from_paths((Path(__file__).parents[2] / "data" / dataset).rglob("data.csv"))
+        dfs = create_dictionary_of_dfs_from_paths((Path(os.path.abspath(__file__)).parents[2] / "data" / dataset).rglob("data.csv"))
     
     # Append year, month and day columns, while creating a list of dataframes 
     list_of_names = list(dfs.keys())
