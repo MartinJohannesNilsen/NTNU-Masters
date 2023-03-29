@@ -144,7 +144,7 @@ def train(df: pd.DataFrame = _get_dataframe().head(500)):
     trainer.eval_dataset = test_dataset
     trainer.evaluate()
 
-def inference(text, checkpoint="results/checkpoint-50"):
+def inference(text, checkpoint=Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings" / "checkpoint-50"):
     
     # Initialize tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -160,7 +160,7 @@ def inference(text, checkpoint="results/checkpoint-50"):
     return pred
 
 
-def test(texts, labels, checkpoint="results/checkpoint-50", threshold=0.75):
+def test(texts, labels, checkpoint=Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings" / "checkpoint-50", threshold=0.75):
     
     # Initialize tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -207,8 +207,9 @@ if __name__ == "__main__":
     outputs, correct_binary, flagged_as_threat, correctly_flagged, incorrectly_flagged = test(texts, labels)
     
     # Stats
+    print("-"*5, f"Stats ", "-"*5)
     # Precision
-    print(f"Precision")
+    print(f"\nPrecision")
     print(f"Number of correctly binary classifications: {len(correct_binary)}/{len(outputs)} ({(len(correct_binary)/len(outputs)*100)}%)")
     print(f"Number of flags: {len(flagged_as_threat)}")
     
@@ -218,6 +219,6 @@ if __name__ == "__main__":
     # print(f"False negatives: {len(incorrectly_flagged)}/{len(flagged_as_threat)} ({(len(incorrectly_flagged)/len(outputs)*100)}%)")
     
     # Recall
-    print(f"Recall")
+    print(f"\nRecall")
     n_threats = list(labels).count(1)
-    print(f"Percentage of threats identified: {len(correctly_flagged)}/{n_threats} ({(len(correctly_flagged)/n_threats if n_threats > 0 else 1)*100}%)")
+    print(f"Percentage of threatening texts identified: {len(correctly_flagged)}/{n_threats} ({(len(correctly_flagged)/n_threats if n_threats > 0 else 1)*100}%)")
