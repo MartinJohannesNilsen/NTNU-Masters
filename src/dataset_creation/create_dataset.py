@@ -6,7 +6,7 @@ from typing import List
 import click
 import pandas as pd
 import sys
-#field_size_limit(sys.maxsize)
+field_size_limit(sys.maxsize)
 
 
 def append_date_columns(dataframe: pd.DataFrame):
@@ -35,7 +35,10 @@ def create_dictionary_of_dfs_from_paths(list_of_files: List[Path] = None, delimi
     # Create a dictionary of csv files per perpetrator
     paths = dict()
     for csv in list_of_files:
-        paths[csv.parents[0].name] = csv
+        parent = csv.parents[0]
+        # key = parent.name
+        key = str(parent.relative_to(parent.parents[1]))
+        paths[key] = csv
     
     # Create a dictionary of dataframes per perpetrator
     dfs = dict()
@@ -72,21 +75,30 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
         worksheet.set_column(2, 2, 100, format)
         
 
+LABEL_DICT = {
+    "school_shooters": 1,
+    "stair_twitter_archive": 1,
+    "manifestos": 1,
+    "stream_of_consciousness": 0,
+    "mypersonality": 0,
+    "twitter": 0,
+}
     
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-d", "--dataset", type=click.Choice(["school_shooters", "stair_twitter_archive", "stream_of_consciousness", "manifestos", "twitter", "all"]), default="school_shooters", help="Folder to create dataframe from")
+@click.option("-d", "--dataset", type=click.Choice(["school_shooters", "stair_twitter_archive", "manifestos", "stream_of_consciousness", "mypersonality", "twitter", "all"]), default="school_shooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
 @click.option("-o", "--out_dir", default=(Path(__file__).parent / "data"), help="Save to folder")
 @click.option("-f", "--format", type=click.Choice(["csv", "xlsx"]), default="csv", help="Save to spreadsheet")
-def main(dataset, verbose, out_dir, format):
+@click.option("-l", "--labeled", is_flag=True, default=False, help="Create a file of all datasets with labels")
+def main(dataset, verbose, out_dir, format, labeled):
 
     if verbose > 0:
         print("Creating dataframe from folder:", dataset)
         if verbose > 1 and dataset != "all":
             print(f"Full path: {Path(os.path.abspath(__file__)).parents[0] / 'data' / dataset}")
-
+    
     # Create dictionary of dataframes
     if dataset == "all":
         dfs = create_dictionary_of_dfs_from_paths((Path(os.path.abspath(__file__)).parents[2] / "data").rglob("data.csv"))
@@ -95,8 +107,13 @@ def main(dataset, verbose, out_dir, format):
     
     # Append year, month and day columns, while creating a list of dataframes 
     list_of_names = list(dfs.keys())
-    list_of_dfs = [append_date_columns(df).assign(name=list_of_names[index].replace("_", " ")) for index, df in enumerate(dfs.values())]
+    # list_of_dfs = [append_date_columns(df).assign(name=list_of_names[index].replace("_", " ")) for index, df in enumerate(dfs.values())]
+    if labeled:
+        list_of_dfs = [append_date_columns(df).assign(name=str(Path(list_of_names[index].replace("_", " ")).name), label=LABEL_DICT[str(Path(list_of_names[index]).parent) if str(Path(list_of_names[index]).parent) != "data" else str(Path(list_of_names[index]).name)]) for index, df in enumerate(dfs.values())]
+    else:
+        list_of_dfs = [append_date_columns(df).assign(name=str(Path(list_of_names[index].replace("_", " ")).name)) for index, df in enumerate(dfs.values())]
     
+
     # Create one big dataframe
     try:
         df = pd.concat(list_of_dfs).reset_index()
@@ -108,11 +125,11 @@ def main(dataset, verbose, out_dir, format):
     if verbose > 1:
         print("-"*40)
         print(df.info())
-        print("-"*40)
+        print("-"*40)    
     
     # Create folder and define file name
     out_dir = Path(out_dir)
-    fname = f"{dataset}.{format}"
+    fname = f"{dataset}_labeled.{format}" if labeled else f"{dataset}.{format}"
 
     # Print if verbose
     if verbose > 0:
