@@ -11,6 +11,7 @@ nltk
 pathlib
 torch
 torchtext
+datasets
 transformers
 scikit-learn
 matplotlib
