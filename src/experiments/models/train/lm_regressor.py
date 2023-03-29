@@ -78,38 +78,36 @@ class MakeTorchData(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.labels)
 
-def train(df: pd.DataFrame = _get_dataframe().head(500)):
+def train(df: pd.DataFrame = _get_dataframe(), test=False):
 
+    # Initialize device
     if torch.cuda.is_available(): 
         dev = "cuda:0" 
     else: 
         dev = "cpu" 
     device = torch.device(dev)
+    
+    # Initialize tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels = 1).to(device)
 
+    # Set X and y
     X = df.text.values
     y = df.label.values
 
     # Split Data into Train, Val and Test
-    # Train Test
-    X_train, X_test, y_train, y_test = train_test_split(X.tolist(), y, test_size=TEST_PORTION)
-    # Train Val
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=VAL_PORTION)
-
-    # Call the Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
+    if test: 
+        X_train, X_test, y_train, y_test = train_test_split(X.tolist(), y, test_size=TEST_PORTION) # Train Test split
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=VAL_PORTION) # Train Val split
+    
     # Encode the text
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     train_encodings = tokenizer(X_train, truncation=True, padding=True, max_length=MAX_LENGTH)
     val_encodings = tokenizer(X_val, truncation=True, padding=True, max_length=MAX_LENGTH)
-    test_encodings = tokenizer(X_test, truncation=True, padding=True, max_length=MAX_LENGTH)
 
     # convert our tokenized data into a torch Dataset
     train_dataset = MakeTorchData(train_encodings, y_train.ravel())
     val_dataset = MakeTorchData(val_encodings, y_val.ravel())
-    test_dataset = MakeTorchData(test_encodings, y_test.ravel())
-
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels = 1).to(device)
 
     training_args = TrainingArguments(
         output_dir = SAVED_MODEL_PATH,          
@@ -140,9 +138,13 @@ def train(df: pd.DataFrame = _get_dataframe().head(500)):
     # Call the summary
     trainer.evaluate()
 
-    # Test on testy dataset
-    trainer.eval_dataset = test_dataset
-    trainer.evaluate()
+    # Test on dedicated test dataset
+    if test:
+        test_encodings = tokenizer(X_test, truncation=True, padding=True, max_length=MAX_LENGTH)
+        test_dataset = MakeTorchData(test_encodings, y_test.ravel())
+        trainer.eval_dataset = test_dataset
+        trainer.evaluate()
+
 
 def inference(text, checkpoint=Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings" / "checkpoint-50"):
     
@@ -169,56 +171,74 @@ def test(texts, labels, checkpoint=Path(os.path.abspath(__file__)).parents[1] / 
     # Forward pass for all texts
     model.eval()
     outputs = []
-    correct_binary = []
-    flagged_as_threat = []
-    correctly_flagged = []
-    incorrectly_flagged = []
+    binary_metrics = {
+        "tp": [],
+        "tn": [],
+        "fp": [],
+        "fn": [],
+    }
+    threshold_metrics = {
+        "tp": [],
+        "tn": [],
+        "fp": [],
+        "fn": [],
+    }
     for i, (text, label) in enumerate(zip(texts, labels)):
         encoding = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=MAX_LENGTH)
         out = model(**encoding)
         pred = torch.sigmoid(out.logits).tolist()[0][0]
         outputs.append(pred)
 
-        # Additional test outputs
+        # Return metrics based on both binary outcome and threshold
+        # Binary
         if round(pred) == label:
-            correct_binary.append(i)
+            binary_metrics["tp"].append((i, pred)) if label == 1 else binary_metrics["tn"].append((i, pred))
+        else:
+            binary_metrics["fp"].append((i, pred)) if round(pred) == 1 else binary_metrics["fn"].append((i, pred))
         
+        # Threshold
         if pred > threshold:
-            flagged_as_threat.append(i)
-            correctly_flagged.append(i) if label == 1 else incorrectly_flagged.append(i)
+            threshold_metrics["tp"].append((i, pred)) if label == 1 else threshold_metrics["fp"].append((i, pred))
+        else:
+            threshold_metrics["fn"].append((i, pred)) if label == 1 else threshold_metrics["tn"].append((i, pred))
+        
     
-    return outputs, correct_binary, flagged_as_threat, correctly_flagged, incorrectly_flagged
+    return outputs, binary_metrics, threshold_metrics
 
 
 if __name__ == "__main__":
 
-    # Data
-    df = _get_dataframe().head(10)
-    
-    # Train
-    # train()
+    # "train", "inference", "test"
+    method = "test"
 
-    # Inference
-    # print(inference("Hello there, this is going marvelous!"))
+    # Data
+    df = _get_dataframe()
+    dev_df = df.sample(n=100)
+    train_df = df.sample(frac=0.8)
+    test_df = df.drop(train_df.index)
+    df = dev_df
     
-    # Test
-    texts = df.text.values
-    labels = df.label.values
-    outputs, correct_binary, flagged_as_threat, correctly_flagged, incorrectly_flagged = test(texts, labels)
-    
-    # Stats
-    print("-"*5, f"Stats ", "-"*5)
-    # Precision
-    print(f"\nPrecision")
-    print(f"Number of correctly binary classifications: {len(correct_binary)}/{len(outputs)} ({(len(correct_binary)/len(outputs)*100)}%)")
-    print(f"Number of flags: {len(flagged_as_threat)}")
-    
-    # print(f"True positives: {correctly_flagged)}/{len(flagged_as_threat)} ({(len(correctly_flagged)/len(outputs)*100)}%)")
-    # print(f"True negatives: {len(incorrectly_flagged)}/{len(flagged_as_threat)} ({(len(incorrectly_flagged)/len(outputs)*100)}%)")
-    # print(f"False positives: {len(incorrectly_flagged)}/{len(flagged_as_threat)} ({(len(incorrectly_flagged)/len(outputs)*100)}%)")
-    # print(f"False negatives: {len(incorrectly_flagged)}/{len(flagged_as_threat)} ({(len(incorrectly_flagged)/len(outputs)*100)}%)")
-    
-    # Recall
-    print(f"\nRecall")
-    n_threats = list(labels).count(1)
-    print(f"Percentage of threatening texts identified: {len(correctly_flagged)}/{n_threats} ({(len(correctly_flagged)/n_threats if n_threats > 0 else 1)*100}%)")
+    if method == "train":
+        train()
+    elif (method == "inference"):
+        print(inference("Are you going to detect me? :)"))
+    elif (method == "test"):
+        texts = df.text.values
+        labels = df.label.values
+        threshold = 0.75
+        outputs, binary_metrics, threshold_metrics = test(texts, labels, threshold=threshold)
+        
+        # Stats
+        print("-"*5, f"Stats ", "-"*5)
+        # Precision
+        print(f"\nPrecision")
+        print(f"Binary")
+        print(f"TP: {len(binary_metrics['tp'])}, TN: {len(binary_metrics['tn'])}, FP: {len(binary_metrics['fp'])}, FN: {len(binary_metrics['fn'])}")
+        print(f"Threshold = {threshold}")
+        print(f"TP: {len(threshold_metrics['tp'])}, TN: {len(threshold_metrics['tn'])}, FP: {len(threshold_metrics['fp'])}, FN: {len(threshold_metrics['fn'])}")
+        
+        # Recall
+        print(f"\nRecall")
+        n_threats = list(labels).count(1)
+        print(f"Percentage of threatening texts identified (binary): {len(binary_metrics['tp'])}/{n_threats} ({round((len(binary_metrics['tp'])/n_threats if n_threats > 0 else 1)*100, 2)}%)")
+        print(f"Percentage of threatening texts identified (threshold={threshold}): {len(threshold_metrics['tp'])}/{n_threats} ({round((len(threshold_metrics['tp'])/n_threats if n_threats > 0 else 1)*100, 2)}%)")
