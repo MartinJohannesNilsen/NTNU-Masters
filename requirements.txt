@@ -15,4 +15,4 @@ transformers
 scikit-learn
 matplotlib
 gensim
-bs4
+beautifulsoup4

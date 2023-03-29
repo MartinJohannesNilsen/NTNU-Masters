@@ -53,8 +53,9 @@ def preprocess_text(text: str, full_clean_url: bool = True):
     words = [re.sub(r'http+|www+', url_replacement, word).lower() for word in words if word not in stopwords.words("english")] 
 
     return [word for word in words if word != ""]
- 
-def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_list: bool = False, emb_dim=50):
+
+    
+def get_glove_word_vectors(words: List[List[str]], sentence_length: int, size_small: bool = True, to_list: bool = False, emb_dim: int = 50):
     """Generates word vectors in the format of GloVe, using torch.vocab.
 
     Args:
@@ -67,9 +68,15 @@ def get_glove_word_vectors(words: List[List[str]], size_small: bool = True, to_l
     """
     # vec = GloVe(name='6B', dim=50) # 862MB
     #vec = GloVe(name='840B', dim=300) # 2.18GB
-    glove_vec = GloVe(name='6B', dim=emb_dim) # 2.18GB
+    glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
     res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
 
+    # Pad tensor if needed
+    if res.shape[0] < sentence_length:
+        req_padding = sentence_length - res.shape[0]
+        pad_tensor = torch.zeros(req_padding, emb_dim)
+        res = torch.cat((res, pad_tensor), dim=0)
+    
     if to_list: return res.tolist()
     else: return res
 
