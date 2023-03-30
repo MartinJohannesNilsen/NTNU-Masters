@@ -11,17 +11,6 @@ import pandas as pd
 from csv import QUOTE_NONE
 import csv
 csv.field_size_limit(sys.maxsize)
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
-
-# Parameters
-VAL_PORTION = 0.2
-TEST_PORTION = 0.2
-MODEL_NAME = "distilbert-base-uncased"
-MAX_LENGTH = 512
-NUM_EPOCHS = 5
-SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings")
-LOG_PATH = "./logs"
-
 
 def _get_dataframe(dataset: str = "all_labeled"):
     # Extract basepath
@@ -78,7 +67,18 @@ class MakeTorchData(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.labels)
 
-def train(X: List, y: List):
+def train(
+        X: List, y: List, 
+        X_test: List = None, y_test: List = None, 
+        val_portion: float = 0.2, 
+        max_length: int = 512, 
+        model_name: str = "distilbert-base-uncased", 
+        num_epochs: int = 5, 
+        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings"), 
+        log_path: str = "./logs"
+        ):
+    
+    assert (X_test != None and y_test != None) or (X_test == None and y_test == None), "If test set defined, you need to pass in both!" 
 
     # Initialize device
     if torch.cuda.is_available(): 
@@ -88,25 +88,25 @@ def train(X: List, y: List):
     device = torch.device(dev)
     
     # Initialize tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, num_labels = 1).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 1).to(device)
 
-    # Split Data into Train, Val and Test
-    X_train, X_val, y_train, y_val = train_test_split(X.tolist(), y, test_size=VAL_PORTION) # Train Val split
+    # Split data into train and validation sets
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_portion) # Train Val split
     
     # Encode the text
     # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-    train_encodings = tokenizer(X_train, truncation=True, padding=True, max_length=MAX_LENGTH)
-    val_encodings = tokenizer(X_val, truncation=True, padding=True, max_length=MAX_LENGTH)
+    train_encodings = tokenizer(X_train, truncation=True, padding=True, max_length=max_length)
+    val_encodings = tokenizer(X_val, truncation=True, padding=True, max_length=max_length)
 
     # convert our tokenized data into a torch Dataset
     train_dataset = MakeTorchData(train_encodings, y_train.ravel())
     val_dataset = MakeTorchData(val_encodings, y_val.ravel())
 
     training_args = TrainingArguments(
-        output_dir = SAVED_MODEL_PATH,          
-        logging_dir = LOG_PATH,            
-        num_train_epochs = NUM_EPOCHS,     
+        output_dir = saved_model_checkpoints,          
+        logging_dir = log_path,            
+        num_train_epochs = num_epochs,     
         per_device_train_batch_size = 32,   
         per_device_eval_batch_size = 20,   
         weight_decay = 0.01,               
@@ -132,21 +132,35 @@ def train(X: List, y: List):
     # Call the summary
     trainer.evaluate()
 
-    # Test on dedicated test dataset
-    if test:
-        test_encodings = tokenizer(X_test, truncation=True, padding=True, max_length=MAX_LENGTH)
+    # Trainer test metrics
+    if X_test and y_test:
+        test_encodings = tokenizer(X_test, truncation=True, padding=True, max_length=max_length)
         test_dataset = MakeTorchData(test_encodings, y_test.ravel())
         trainer.eval_dataset = test_dataset
         trainer.evaluate()
 
-def evaluate(X: List, y: List):
-    pass
 
 if __name__ == "__main__":
+    # Parameters
+    VAL_PORTION = 0.2
+    TEST_PORTION = 0.2
+    MODEL_NAME = "distilbert-base-uncased"
+    MAX_LENGTH = 512
+    NUM_EPOCHS = 1
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings")
+    LOG_PATH = "./logs"
+
     # Data
     df = _get_dataframe(dataset="all_labeled")
-    # dev_df = df.sample(n=100)
-    # train_df = df.sample(frac=0.8)
+    # df = df.sample(n=100)
+    # train_df = df.sample(frac=1-TEST_PORTION)
     # test_df = df.drop(train_df.index)
 
-    train(df=df)
+    # Set X and y
+    X = df.text.values.tolist()
+    y = df.label.values
+
+    # X_test = test_df.text.values.tolist()
+    # y_test = test_df.label.values
+
+    train(X=X, y=y, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=MODEL_NAME, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
