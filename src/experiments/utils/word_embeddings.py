@@ -1,22 +1,22 @@
 # Imports
 import os
 from pathlib import Path
+import numpy as np
 import torch
 from nltk.tokenize import RegexpTokenizer, word_tokenize
 from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
-from transformers import BertTokenizer
+from transformers import AutoTokenizer, AutoModel
 from bs4 import BeautifulSoup
 import re
 from typing import List
-import torch.nn.functional as F
+from transformers import pipeline
 
-
-def get_bert_word_embeddings(text: str, chunk_size: int = 512, tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=False), to_list: bool = False, truncate: bool = False):
-    """A method for generating BERT word embeddings using a pre-trained tokenizer. Returns result as either torch tensors (default) or regular lists.
+def get_bert_word_embeddings(input, pretrained_name = "bert-base-uncased", to_list: bool = True):
+    """A method for generating BERT word embeddings using a pre-trained tokenizer. Returns result as either torch tensors (default) or regular lists. 
 
     Args:
-        text (str): Input string.
+        input (str or List[str]): Input string or list of input strings.
         chunk_size (int, optional): The size of chunks. Padding will be applied. Defaults to 512.
         pretrained_tokenizer (str, optional): Which pre-trained tokenizer to use. Defaults to 'bert-base-uncased'.
         do_lower_case (bool, optional): If True, lowercasing will be applied. Defaults to False.
@@ -25,48 +25,22 @@ def get_bert_word_embeddings(text: str, chunk_size: int = 512, tokenizer = BertT
     Returns:
         list or torch.tensor: A 2d array of chunked word embeddings. Defaults to torch.tensor.
     """
-    
-    # Tokenize and return tensors
-    if truncate:
-        tokens = tokenizer.encode_plus(text, add_special_tokens=False, return_tensors="pt", truncation=truncate, max_length = chunk_size)
-    else:   
-        tokens = tokenizer.encode_plus(text, add_special_tokens=False, return_tensors="pt")
-    
-    
-    # Split into chunks of 510 tokens, we also convert to list (default is tuple which is immutable)
-    input_id_chunks = list(tokens['input_ids'][0].split(chunk_size - 2))
-    mask_chunks = list(tokens['attention_mask'][0].split(chunk_size - 2))
 
-    # Loop through each chunk
-    for i in range(len(input_id_chunks)):
-        # Add CLS and SEP tokens to input IDs
-        input_id_chunks[i] = torch.cat([torch.tensor([101]), input_id_chunks[i], torch.tensor([102])])
-        # Add attention tokens to attention mask
-        mask_chunks[i] = torch.cat([torch.tensor([1]), mask_chunks[i], torch.tensor([1])])
-        # Get required padding length
-        pad_len = chunk_size - input_id_chunks[i].shape[0]
-        # Check if tensor length satisfies required chunk size
-        if pad_len > 0:
-            # If padding length is more than 0, we must add padding
-            input_id_chunks[i] = torch.cat([input_id_chunks[i], torch.Tensor([0] * pad_len)])
-            mask_chunks[i] = torch.cat([mask_chunks[i], torch.Tensor([0] * pad_len)])
+    tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
+    model = AutoModel.from_pretrained(pretrained_name)
 
-    # Create stacks
-    input_ids = torch.stack(input_id_chunks)
-    attention_mask = torch.stack(mask_chunks)
+    pipe = pipeline('feature-extraction', model=model, tokenizer=tokenizer)
+    out = pipe(input)
 
-    if to_list:
-        return input_ids.tolist()
-
-    # Create return dictionary
-    input_dict = {
-        'input_ids': input_ids.long(),
-        'attention_mask': attention_mask.int()
-    }
-
-    return input_dict
-
-
+    # if embedding_type(input) is str:
+    if isinstance(input, str):
+        if to_list: return out[0]
+        else: return torch.tensor(out[0])
+    else:
+        arr = [e[0] for e in out]
+        if to_list: return arr
+        else: return torch.tensor(arr)
+       
 def preprocess_text(text: str, full_clean_url: bool = True):
     soup = BeautifulSoup(text, "html.parser")
     text = soup.get_text()
@@ -115,7 +89,6 @@ def get_glove_word_vectors(words: List[List[str]], sentence_length: int, size_sm
     if to_list: return res.tolist()
     else: return res
 
-
 def get_fasttext_word_vectors(text: str, to_list: bool = False):
     """Generates word vectors in the format of FastText, using torch.vocab.
 
@@ -133,25 +106,24 @@ def get_fasttext_word_vectors(text: str, to_list: bool = False):
     if to_list: return res.tolist()
     else: return res
 
+def _test(text, embedding_type: str, to_list: bool = False):
+    assert embedding_type == "bert" or embedding_type == "glove" or embedding_type == "fasttext", "Type not defined!"
 
-def _test(text, type: str):
-    assert type == "bert" or type == "glove" or type == "fasttext", "Type not defined!"
+    if embedding_type == "bert":
+        return(get_bert_word_embeddings(text, to_list=to_list))
+    elif embedding_type == "glove":
+        return(get_glove_word_vectors(text, to_list=to_list))
+    elif embedding_type == "fasttext":
+        return(get_fasttext_word_vectors(text, to_list=to_list))
 
-    if type == "bert":
-        print(get_bert_word_embeddings(text))
-    elif type == "glove":
-        print(get_glove_word_vectors(text))
-    elif type == "fasttext":
-        print(get_fasttext_word_vectors(text))
-
-def save(text, type: str, path: str):
-    assert type == "bert" or type == "glove" or type == "fasttext", "Type not defined!"
+def save(text, embedding_type: str, path: str):
+    assert embedding_type == "bert" or embedding_type == "glove" or embedding_type == "fasttext", "Type not defined!"
     
-    if type == "bert":
+    if embedding_type == "bert":
         torch.save(get_bert_word_embeddings(text), path)
-    elif type == "glove":
+    elif embedding_type == "glove":
         torch.save(get_glove_word_vectors(text), path)
-    elif type == "fasttext":
+    elif embedding_type == "fasttext":
         torch.save(get_fasttext_word_vectors(text), path)
 
 def load(path):
@@ -159,20 +131,28 @@ def load(path):
 
 
 if __name__ == "__main__":
-    
-    # Test
+    # Type
+    embedding_type = "bert" 
+    # embedding_type = "glove" 
+    # embedding_type = "fasttext"
+
+    # Text
     example1 = "It does not do to dwell on dreams and forget to live, remember that. Now, why don’t you put that admirable Cloak back on and get off to bed?"
     example2 = "Just because you’ve got the emotional range of a teaspoon doesn’t mean we all have."
     example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
-    #_test(example1, "fasttext")
+    
+    # Test
+    test1 = _test(example1, embedding_type, to_list=True)
+    test2 = _test([example1, example2], embedding_type, to_list=True)
+    
+    print(len(test1))
+    print(len(test2))
+    print(len(test2[0]))
     
     # Save
-    type = "bert" 
-    # type = "glove" 
-    # type = "fasttext" 
-    path = Path(os.path.abspath(__file__)).parents[1] / "features" / f"example1_{type}.pt"
-    # save(example1, type, path)
+    # path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings" / f"example1_{embedding_type}.pt"
+    # save(example1, embedding_type, path)
 
     # Load
-    tensor = load(path)
-    print(tensor)
+    # tensor = load(path).tolist()
+    # print(tensor)
