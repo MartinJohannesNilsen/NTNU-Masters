@@ -1,2 +1,0 @@
-from embeddings_for_language_models import get_bert_word_embeddings_lm
-from word_embeddings import get_bert_word_embeddings, get_fasttext_word_vectors, get_glove_word_vectors
