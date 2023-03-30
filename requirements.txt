@@ -17,3 +17,4 @@ scikit-learn
 matplotlib
 gensim
 beautifulsoup4
+wandb

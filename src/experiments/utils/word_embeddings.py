@@ -68,14 +68,23 @@ def get_glove_word_vectors(words: List[List[str]], sentence_length: int, size_sm
     """
     # vec = GloVe(name='6B', dim=50) # 862MB
     #vec = GloVe(name='840B', dim=300) # 2.18GB
-    glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
-    res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
-
+    try:
+        glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
+        res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
+    except RuntimeError:
+        #print("res b4 pad: ", res)
+        print("words b4 glove: ", words)
     # Pad tensor if needed
     if res.shape[0] < sentence_length:
-        req_padding = sentence_length - res.shape[0]
-        pad_tensor = torch.zeros(req_padding, emb_dim)
-        res = torch.cat((res, pad_tensor), dim=0)
+        try:
+            req_padding = sentence_length - res.shape[0]
+            pad_tensor = torch.zeros(req_padding, emb_dim)
+            res = torch.cat((res, pad_tensor), dim=0)
+        except RuntimeError:
+            print("res b4 pad: ", res)
+            print("padding while pad: ", req_padding)
+            print("pad_tensor while pad: ", pad_tensor)
+
     
     if to_list: return res.tolist()
     else: return res
