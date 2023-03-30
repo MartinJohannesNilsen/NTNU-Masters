@@ -1,17 +1,16 @@
 # Imports
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 import torch
-from transformers.file_utils import is_tf_available, is_torch_available
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
-#%load_ext memory_profiler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_error, mean_absolute_error
 import pandas as pd
+from csv import QUOTE_NONE
 import csv
 csv.field_size_limit(sys.maxsize)
-from csv import QUOTE_NONE
+from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
 
 # Parameters
 VAL_PORTION = 0.2
@@ -170,40 +169,19 @@ def test(texts, labels, checkpoint=Path(os.path.abspath(__file__)).parents[1] / 
 
     # Forward pass for all texts
     model.eval()
-    outputs = []
-    binary_metrics = {
-        "tp": [],
-        "tn": [],
-        "fp": [],
-        "fn": [],
-    }
-    threshold_metrics = {
-        "tp": [],
-        "tn": [],
-        "fp": [],
-        "fn": [],
-    }
+    predictions = []
+    y_pred_binary = []
+    y_pred_threshold = []
+    
     for i, (text, label) in enumerate(zip(texts, labels)):
         encoding = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=MAX_LENGTH)
         out = model(**encoding)
         pred = torch.sigmoid(out.logits).tolist()[0][0]
-        outputs.append(pred)
+        predictions.append(pred)
+        y_pred_binary.append(1 if pred > 0.5 else 0)
+        y_pred_threshold.append(1 if pred > threshold else 0)
 
-        # Return metrics based on both binary outcome and threshold
-        # Binary
-        if round(pred) == label:
-            binary_metrics["tp"].append((i, pred)) if label == 1 else binary_metrics["tn"].append((i, pred))
-        else:
-            binary_metrics["fp"].append((i, pred)) if round(pred) == 1 else binary_metrics["fn"].append((i, pred))
-        
-        # Threshold
-        if pred > threshold:
-            threshold_metrics["tp"].append((i, pred)) if label == 1 else threshold_metrics["fp"].append((i, pred))
-        else:
-            threshold_metrics["fn"].append((i, pred)) if label == 1 else threshold_metrics["tn"].append((i, pred))
-        
-    
-    return outputs, binary_metrics, threshold_metrics
+    return pred, y_pred_binary, y_pred_threshold
 
 
 if __name__ == "__main__":
@@ -226,19 +204,77 @@ if __name__ == "__main__":
         texts = df.text.values
         labels = df.label.values
         threshold = 0.75
-        outputs, binary_metrics, threshold_metrics = test(texts, labels, threshold=threshold)
+        outputs, y_pred_binary, y_pred_threshold = test(texts, labels, threshold=threshold)
         
         # Stats
+
+        # Get binary stats
+        tn, fp, fn, tp = confusion_matrix(labels, y_pred_binary).ravel()
+        precision, recall, fscore, _ = precision_recall_fscore_support(labels, y_pred_binary, average="macro", zero_division=0)
+        roc_auc = roc_auc_score(labels, y_pred_binary)
+        binary_stats = {
+            "tn": tn,
+            "fp": fp,
+            "fn": fn,
+            "tp": tp,
+            "accuracy": (tp+tn)/(tp+fp+fn+tn),
+            "precision": precision,
+            "recall": recall,
+            "specificity": tn / (tn + fp),
+            "f1_score": fscore,
+            "roc_auc": roc_auc
+        }
+
+        # Get threshold stats
+        tn, fp, fn, tp = confusion_matrix(labels, y_pred_threshold).ravel()
+        precision, recall, fscore, _ = precision_recall_fscore_support(labels, y_pred_threshold, average="macro", zero_division=0)
+        roc_auc = roc_auc_score(labels, y_pred_threshold)
+        threshold_stats = {
+            "tn": tn,
+            "fp": fp,
+            "fn": fn,
+            "tp": tp,
+            "accuracy": (tp+tn)/(tp+fp+fn+tn),
+            "precision": precision,
+            "recall": recall,
+            "specificity": tn / (tn + fp),
+            "f1_score": fscore,
+            "roc_auc": roc_auc
+        }
+
+        # Print stats
         print("-"*5, f"Stats ", "-"*5)
-        # Precision
-        print(f"\nPrecision")
-        print(f"Binary")
-        print(f"TP: {len(binary_metrics['tp'])}, TN: {len(binary_metrics['tn'])}, FP: {len(binary_metrics['fp'])}, FN: {len(binary_metrics['fn'])}")
-        print(f"Threshold = {threshold}")
-        print(f"TP: {len(threshold_metrics['tp'])}, TN: {len(threshold_metrics['tn'])}, FP: {len(threshold_metrics['fp'])}, FN: {len(threshold_metrics['fn'])}")
+        print(f"\nConfusion matrix")
+        print(f"\"The number of True Positives, True Negatives, False Positives and False Negatives.\"")
+        print(f"Binary:           TP: {binary_stats['tp']} | TN: {binary_stats['tn']} | FP: {binary_stats['fp']} | FN: {binary_stats['tp']}")
+        print(f"Threshold = {threshold}: TP: {threshold_stats['tp']} | TN: {threshold_stats['tn']} | FP: {threshold_stats['fp']} | FN: {threshold_stats['fn']}")
+
+        print(f"\nAccuracy ((TP + TN) / (TP + FP + FN + TN)")
+        print(f"\"The percentage of classifications which is in fact true.\"")
+        print(f"Binary: {round(binary_stats['accuracy']*100, 3)}%")
+        print(f"Threshold = {threshold}: {round(threshold_stats['accuracy']*100, 3)}%")
+
+        print(f"\nPrecision (TP / (TP + FP))")
+        print(f"\"The percentage of classified positives which is true.\"")
+        print(f"Binary: {round(binary_stats['precision']*100, 3)}%")
+        print(f"Threshold = {threshold}: {round(threshold_stats['precision']*100, 3)}%")
         
-        # Recall
-        print(f"\nRecall")
-        n_threats = list(labels).count(1)
-        print(f"Percentage of threatening texts identified (binary): {len(binary_metrics['tp'])}/{n_threats} ({round((len(binary_metrics['tp'])/n_threats if n_threats > 0 else 1)*100, 2)}%)")
-        print(f"Percentage of threatening texts identified (threshold={threshold}): {len(threshold_metrics['tp'])}/{n_threats} ({round((len(threshold_metrics['tp'])/n_threats if n_threats > 0 else 1)*100, 2)}%)")
+        print(f"\nRecall (TP / (TP + FN))")
+        print(f"\"Out of all the positives, how many did we correctly classify?\"")
+        print(f"Binary: {round(binary_stats['recall']*100, 3)}%")
+        print(f"Threshold = {threshold}: {round(threshold_stats['recall']*100, 3)}%")
+
+        print(f"\nSpecificity (TN / (TN + FP))")
+        print(f"\"Out of all the negatives, how many did we correctly classify?\"")
+        print(f"Binary: {round(binary_stats['specificity']*100, 3)}%")
+        print(f"Threshold = {threshold}: {round(threshold_stats['specificity']*100, 3)}%")
+        
+        print(f"\nF1-Score (2 * (precicion * recall) / (precision + recall))")
+        print(f"\"The harmonic mean/weighted average of precision and recall.\"")
+        print(f"Binary: {round(binary_stats['f1_score']*100, 3)}%")
+        print(f"Threshold = {threshold}: {round(threshold_stats['f1_score']*100, 3)}%")
+
+        print(f"\nAUC (Area under ROC curve, ROC-AUC)")
+        print(f"\"Tells us about the capability of model in distinguishing the classes\"")
+        print(f"Binary: {round(binary_stats['roc_auc']*100, 3)}%")
+        print(f"Threshold = {threshold}: {round(threshold_stats['roc_auc']*100, 3)}%")
