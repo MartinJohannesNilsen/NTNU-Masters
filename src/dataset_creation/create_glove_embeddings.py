@@ -12,13 +12,13 @@ train_df = pd.read_csv(data_folder / "train_test" / "train.csv", sep="‎", quot
 test_df = pd.read_csv(data_folder / "train_test" / "test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 hold_out_df = pd.read_csv(data_folder / "train_test" / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
-def get_glove_emb(dataframe: pd.DataFrame):
-    dataframe["text"] = dataframe["text"].map(lambda a: preprocess_text(a)) # Preprocess into tokens to send to glove emb method
-    dataframe = dataframe[len(dataframe["text"]) > 0] # Some entries from the previous step can become empty lists. Remove these
+def get_glove_emb(df: pd.DataFrame):
+    df["text"] = df["text"].map(lambda a: preprocess_text(a)) # Preprocess into tokens to send to glove emb method
+    df = df[df["text"].map(len) > 0] # Some entries from the previous step can become empty lists. Remove these
 
-    dataframe["text"] = dataframe["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=512))
+    df["text"] = df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=512))
 
-    return dataframe
+    return df
 
 train_df = get_glove_emb(train_df)
 train_df.to_pickle(data_folder / "train_test_val" / "train_glove.pkl", compression="bz2")
