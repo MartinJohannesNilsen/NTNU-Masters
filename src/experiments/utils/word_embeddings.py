@@ -82,12 +82,8 @@ def get_glove_word_vectors(words: List[List[str]], sentence_length: int, size_sm
     """
     # vec = GloVe(name='6B', dim=50) # 862MB
     #vec = GloVe(name='840B', dim=300) # 2.18GB
-    try:
-        glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
-        res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
-    except RuntimeError:
-        #print("res b4 pad: ", res)
-        print("words b4 glove: ", words)
+    glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
+    res = glove_vec.get_vecs_by_tokens(words, lower_case_backup=True)
     # Pad tensor if needed
     if res.shape[0] < sentence_length:
         try:
