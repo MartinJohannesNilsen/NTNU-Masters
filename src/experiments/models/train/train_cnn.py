@@ -119,7 +119,7 @@ def train():
     # Find max sentence length and send to embeddings method
     # This will return all sentences converted to a matrix of glove word embeddings
     # Each sentence is padded to the same length as max_len to facilitate use in the neural net
-    whole_corpus_df["text"] = whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=max_len, emb_dim=50))
+    whole_corpus_df["text"] = whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=max_len))
 
     # Pickle
     # print(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")

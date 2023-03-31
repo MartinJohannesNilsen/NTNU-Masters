@@ -73,39 +73,4 @@ shapes = [list(t.shape) for t in x_train]
 dic_size = [dims[0] for dims in shapes]
 print(shapes)
 
-""" max_dic_size = max(dic_size)
-min_dic_size = min(dic_size)
-print(min_dic_size)
-print(max_dic_size)
-for x in x_train:
-    if x.shape[0] == min_dic_size:
-        print("x_shape: ", x.shape)
-        i = 0
-        for _ in x:
-            print(_)
-            i += 1
-            print("i: ", i) """
-
-
-
-
-""" shooter_words = list(itertools.chain.from_iterable(shooter_df["text"]))
-non_shooter_words = list(itertools.chain.from_iterable(non_shooter_df["text"]))
-#print(non_shooter_words)
-
-#shooter_word_freqs = nltk.FreqDist(shooter_words)
-#non_shooter_word_freqs = nltk.FreqDist(non_shooter_words)
-
-whole_corpus_df = pd.concat([shooter_df, non_shooter_df]).sample(frac=1)
-whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a))
-
-x_train, x_test, y_train, y_test = train_test_split(whole_corpus_df["text"], whole_corpus_df["shooter"], test_size=0.1)
-x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1)
-
-print(x_train) """
-
-""" sns.set_style("darkgrid")
-shooter_word_freqs.plot(20)
-non_shooter_word_freqs.plot(20) """
-
 

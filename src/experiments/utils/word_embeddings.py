@@ -5,6 +5,7 @@ from nltk.tokenize import RegexpTokenizer, word_tokenize
 from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
 from transformers import AutoTokenizer, AutoModel
+from bs4 import BeautifulSoup
 import re
 from typing import List
 from transformers import pipeline
