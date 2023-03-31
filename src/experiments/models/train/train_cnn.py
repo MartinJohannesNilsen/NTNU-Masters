@@ -122,8 +122,8 @@ def train():
     whole_corpus_df["text"] = whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=max_len, emb_dim=50))
 
     # Pickle
-    #print(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")
-    #whole_corpus_df.to_pickle(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")
+    # print(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")
+    # whole_corpus_df.to_pickle(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")
 
     x_train, x_test, y_train, y_test = train_test_split(whole_corpus_df["text"], whole_corpus_df["label"], test_size=0.2)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
