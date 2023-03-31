@@ -7,6 +7,7 @@ from nltk.tokenize import RegexpTokenizer, word_tokenize
 from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
 from transformers import AutoTokenizer, AutoModel
+from bs4 import BeautifulSoup
 
 import re
 from typing import List
@@ -97,6 +98,8 @@ def get_glove_word_vectors(words: List[List[str]], sentence_length: int, size_sm
             print("res b4 pad: ", res)
             print("padding while pad: ", req_padding)
             print("pad_tensor while pad: ", pad_tensor)
+    elif res.shape[0] > sentence_length:
+        res = res[:sentence_length, :]
 
     
     if to_list: return res.tolist()
@@ -155,13 +158,23 @@ if __name__ == "__main__":
     example3 = "Voldemort himself created his worst enemy, just as tyrants everywhere do! Have you any idea how much tyrants fear the people they oppress? All of them realize that, one day, amongst their many victims, there is sure to be one who rises against them and strikes back!"
     
     # Test
-    test1 = _test(example1, embedding_type, to_list=True)
+    """ test1 = _test(example1, embedding_type, to_list=True)
     test2 = _test([example1, example2], embedding_type, to_list=True)
     
     print(len(test1))
     print(len(test2))
     print(len(test2[0]))
+    """
     
+    ex_test = preprocess_text(example2)
+    test_tokens = []
+    for i in range(20):
+        for word in ex_test:
+            test_tokens.append(word)
+
+    test_emb = get_glove_word_vectors(test_tokens, 50)
+    print(test_emb.shape)
+
     # Save
     # path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings" / f"example1_{embedding_type}.pt"
     # save(example1, embedding_type, path)
