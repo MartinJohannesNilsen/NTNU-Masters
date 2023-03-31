@@ -47,4 +47,4 @@ for _, row in df.iterrows():
 new_df = pd.DataFrame(new_rows, columns=df.columns)
 new_df["text"] = new_df["text"].map(lambda a: " ".join(a))
 
-new_df.to_csv(data_folder / "all_labeled_split_512.csv", sep="‎", quoting=QUOTE_NONE)
+new_df.to_csv(data_folder / "all_labeled_split_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
