@@ -7,7 +7,7 @@ from nltk.tokenize import RegexpTokenizer, word_tokenize
 from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
 from transformers import AutoTokenizer, AutoModel
-from bs4 import BeautifulSoup
+
 import re
 from typing import List
 from transformers import pipeline
@@ -57,9 +57,22 @@ def _tokenize_with_preprocessing(text: str, remove_url: bool = True):
 
     url_replacement = "" if remove_url else "URLHYPERLINK"
 
-    words = [re.sub(r'http+|www+', url_replacement, word).lower() for word in words if word not in stopwords.words("english")] 
+    cleaned_words = []
+    for word in words:
+        word = word.lower()
+        if word not in stopwords.words("english"):
+            word = re.sub(r'http+|www+', url_replacement, word) # Replace urls with chosen string or remove completely
+            word = re.sub(r'@[^ ]+', '', word) # Remove usernames in the context of Twitter posts
+            word = re.sub(r'#', '', word) # Remove hashtags and keep words
+            word = re.sub(r'([A-Za-z])\1{2,}', r'\1', word) # Character normalization, prevent words with letters repeated more than twice
 
-    return [word for word in words if word != ""]
+            if word != "":
+                cleaned_words.append(word)
+
+    #words = [re.sub(r'http+|www+', url_replacement, word).lower() for word in words if word not in stopwords.words("english")] 
+
+    #return [word for word in words if word != ""]
+    return cleaned_words
 
     
 def get_glove_word_vectors(input: str or List[str], min_length: int = None, emb_dim: 50 or 300 = 50):
