@@ -14,7 +14,7 @@ train_df = pd.read_csv(data_folder / "train_test_val" / "train.csv", sep="‎", 
 test_df = pd.read_csv(data_folder / "train_test_val" / "test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 hold_out_df = pd.read_csv(data_folder / "train_test_val" / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
-def get_glove_emb(df: pd.df):
+def get_glove_emb(df: pd.DataFrame):
     df["text"] = df["text"].map(lambda a: preprocess_text(a)) # Preprocess into tokens to send to glove emb method
     df = df[df["text"].map(len) > 0] # Some entries from the previous step can become empty lists. Remove these
 
