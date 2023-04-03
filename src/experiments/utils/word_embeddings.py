@@ -125,11 +125,9 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
     def _extract_embeddings(input):
         tokenized_input = _tokenize_with_preprocessing(input)
         emb_dim = 50 if size_small else 300
-        try:
-            glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
-            res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
-        except RuntimeError:
-            print("Input words: ", tokenized_input)
+
+        glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
+        res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim)
         
