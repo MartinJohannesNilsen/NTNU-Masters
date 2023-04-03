@@ -155,10 +155,10 @@ if __name__ == "__main__":
         print("-"*5, f"Stats ", "-"*5)
         print(f"\nConfusion matrix")
         print(f"\"The number of True Positives, True Negatives, False Positives and False Negatives.\"")
-        print(f"Binary:           TP: {binary_stats['tp']} | TN: {binary_stats['tn']} | FP: {binary_stats['fp']} | FN: {binary_stats['tp']}")
+        print(f"Binary:           TP: {binary_stats['tp']} | TN: {binary_stats['tn']} | FP: {binary_stats['fp']} | FN: {binary_stats['fn']}")
         print(f"Threshold = {threshold}: TP: {threshold_stats['tp']} | TN: {threshold_stats['tn']} | FP: {threshold_stats['fp']} | FN: {threshold_stats['fn']}")
 
-        print(f"\nAccuracy ((TP + TN) / (TP + FP + FN + TN)")
+        print(f"\nAccuracy ((TP + TN) / (TP + FP + FN + TN))")
         print(f"\"The percentage of all classifications which is true.\"")
         print(f"Binary: {round(binary_stats['accuracy']*100, 3)}%")
         print(f"Threshold = {threshold}: {round(threshold_stats['accuracy']*100, 3)}%")
