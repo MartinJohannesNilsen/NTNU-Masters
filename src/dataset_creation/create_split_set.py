@@ -26,28 +26,29 @@ if __name__ == "__main__":
     # Split or truncate all posts based on fixed maximum doc_size
     new_rows = []
     for _, row in df.iterrows():
-        tokens = row["text"].split(" ")
-        tokens_left = len(tokens)
-        threshold = 20 # Threshold to determine split or truncation
-        doc_size = 512
+        if row["name"] != "stair twitter archive":
+            tokens = row["text"].split(" ")
+            tokens_left = len(tokens)
+            threshold = 20 # Threshold to determine split or truncation
+            doc_size = 512
 
-        if tokens_left > doc_size:
-            lower = 0
-            upper = doc_size - 1
+            if tokens_left > doc_size:
+                lower = 0
+                upper = doc_size - 1
 
-            while tokens_left > threshold:
-                new_row = [row["date"], tokens[lower:upper], row["name"], row["label"]]
-                new_rows.append(new_row)
-                lower += doc_size
-                upper += doc_size
-                tokens_left -= doc_size
+                while tokens_left > threshold:
+                    new_row = [row["date"], tokens[lower:upper], row["name"], row["label"]]
+                    new_rows.append(new_row)
+                    lower += doc_size
+                    upper += doc_size
+                    tokens_left -= doc_size
 
-        else:
-            new_rows.append([row["date"], tokens, row["name"], row["label"]])
+            else:
+                new_rows.append([row["date"], tokens, row["name"], row["label"]])
 
     # Create new dataframe
     new_df = pd.DataFrame(new_rows, columns=df.columns)
     new_df["text"] = new_df["text"].map(lambda a: " ".join(a))
 
     # Write dataframe to csv
-    new_df.to_csv(data_folder / "all_labeled_split_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+    new_df.to_csv(data_folder / "all_labeled_split_512_no_randy_twitter.csv", sep="‎", quoting=QUOTE_NONE, index=False)

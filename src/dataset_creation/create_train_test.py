@@ -25,7 +25,7 @@ if __name__ == "__main__":
     target_path = Path(os.path.abspath("")) / "data" / "train_test"
 
     # Read data
-    df = pd.read_csv(data_folder / "all_labeled_split_512.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    df = pd.read_csv(data_folder / "all_labeled_split_512_no_randy_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
     # Hold out some shooters texts for testing purposes
     romano_df = df[df["name"] == "Jon Romano"]
@@ -44,6 +44,6 @@ if __name__ == "__main__":
     final_test = pd.concat([shooter_test, non_shooter_test], ignore_index=True)
 
     # Write dataframes to files
-    final_train.to_csv(target_path / "train.csv", sep="‎", quoting=QUOTE_NONE, index=False)
-    final_test.to_csv(target_path / "test.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+    final_train.to_csv(target_path / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+    final_test.to_csv(target_path / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, index=False)
     shooter_hold_out_test.to_csv(target_path / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, index=False)
