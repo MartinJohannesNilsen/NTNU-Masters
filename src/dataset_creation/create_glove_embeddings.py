@@ -21,13 +21,10 @@ def get_glove_emb(df: pd.DataFrame):
     return df
 
 train_df = get_glove_emb(train_df)
-train_df.to_pickle(data_folder / "train_test_val" / "train_glove.pkl", compression="bz2")
+train_df.to_pickle(data_folder / "train_test" / "train_glove.pkl", compression="bz2")
 
 test_df = get_glove_emb(test_df)
-test_df.to_pickle(data_folder / "train_test_val" / "test_glove.pkl", compression="bz2")
+test_df.to_pickle(data_folder / "train_test" / "test_glove.pkl", compression="bz2")
 
 hold_out_df = get_glove_emb(hold_out_df)
-hold_out_df.to_pickle(data_folder / "train_test_val" / "hold_out_test_glove.pkl", compression="bz2")
-
-""" df = pd.read_pickle(data_folder / "train_test_val" / "hold_out_glove.pkl", compression="bz2")
-print(df) """
+hold_out_df.to_pickle(data_folder / "train_test" / "hold_out_test_glove.pkl", compression="bz2")
