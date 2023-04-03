@@ -91,7 +91,7 @@ def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-ba
 
     tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
     model = AutoModel.from_pretrained(pretrained_name)
-    extract_features = pipeline('feature-extraction', model=model, tokenizer=tokenizer)
+    extract_features = pipeline('feature-extraction', model=model, tokenizer=tokenizer, padding=True, truncation=True)
     
     # If string: dim (1, n_tokens, 768)
     # If List[str]: dim (n_entries, 1, n_tokens, 768)
