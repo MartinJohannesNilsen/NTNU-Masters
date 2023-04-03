@@ -11,12 +11,16 @@ import pandas as pd
 from csv import QUOTE_NONE
 import csv
 csv.field_size_limit(sys.maxsize)
+import wandb
+wandb.login(key="57878dd06745f877fc0ce405c74e1a57103391f0") # TODO Make .env file for this key
 
 def _get_dataframe(dataset: str = "all_labeled"):
     # Extract basepath
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
+        "train": base_path / "train_test" / "train.csv",
+        "test": base_path / "train_test" / "test.csv",
         "all_labeled": base_path / "all_labeled.csv",
         "all": base_path / "all.csv",
         "manifestos": base_path / "manifestos.csv",
@@ -143,23 +147,20 @@ def train(
 if __name__ == "__main__":
     # Parameters
     VAL_PORTION = 0.2
-    TEST_PORTION = 0.2
     MODEL_NAME = "distilbert-base-uncased"
     MAX_LENGTH = 512
-    NUM_EPOCHS = 1
+    NUM_EPOCHS = 20
     SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings")
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset="all_labeled")
-    # df = df.sample(n=100)
-    # train_df = df.sample(frac=1-TEST_PORTION)
-    # test_df = df.drop(train_df.index)
+    df = _get_dataframe(dataset="train")
 
     # Set X and y
     X = df.text.values.tolist()
     y = df.label.values
 
+    # test_df = _get_dataframe(dataset="test")
     # X_test = test_df.text.values.tolist()
     # y_test = test_df.label.values
 

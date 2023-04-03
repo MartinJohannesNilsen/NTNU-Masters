@@ -1,14 +1,14 @@
-q:
+qm:
 	squeue -u martijni
+
+q:
+	squeue
 	
-r:
-	chmod u+x job.slurm && sbatch job.slurm
+tr:
+	chmod u+x train_lm.slurm && sbatch train_lm.slurm
 
-z:
-	chmod u+x zc.slurm && sbatch zc.slurm
-
-g:
-	chmod u+x git.slurm && sbatch git.slurm
+te:
+	chmod u+x test_lm.slurm && sbatch test_lm.slurm
 
 s:
 	scancel $(id)

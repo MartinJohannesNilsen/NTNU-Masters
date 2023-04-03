@@ -16,6 +16,8 @@ def _get_dataframe(dataset: str = "all_labeled"):
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
+        "train": base_path / "train_test" / "train.csv",
+        "test": base_path / "train_test" / "test.csv",
         "all_labeled": base_path / "all_labeled.csv",
         "all": base_path / "all.csv",
         "manifestos": base_path / "manifestos.csv",
@@ -36,7 +38,6 @@ def _get_dataframe(dataset: str = "all_labeled"):
     df = all_labeled_df.drop(["date", "name"], axis=1)
 
     return df
-
 
 def inference(
         text: str, 
@@ -90,23 +91,25 @@ def test(
 
 if __name__ == "__main__":
 
+    # Get checkpoint
+    models = Path(os.path.abspath(__file__)).parents[1] / "saved_models"
+    checkpoint = models / "lm_regressor" / "bert_encodings" / "checkpoint-24340"
+
     # "inference", "test"
     method = "test"
 
     # Data
-    df = _get_dataframe()
-    dev_df = df.sample(n=100)
-    train_df = df.sample(frac=0.8)
-    test_df = df.drop(train_df.index)
-    df = dev_df
+    df = _get_dataframe(dataset="test")
     
+
     if (method == "inference"):
-        print(inference("Are you going to detect me? :)"))
+        print(inference("Are you going to detect me? :)", checkpoint=checkpoint))
     elif (method == "test"):
         texts = df.text.values
         labels = df.label.values
         threshold = 0.75
         outputs, y_pred_binary, y_pred_threshold = test(texts, 
+                                                        checkpoint=checkpoint,
                                                         threshold=threshold, 
                                                         model_name = "distilbert-base-uncased", 
                                                         max_length = 512)
