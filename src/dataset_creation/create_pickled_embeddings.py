@@ -27,10 +27,6 @@ train_df = pd.read_csv(data_folder / "train.csv", sep="‎", quoting=QUOTE_NONE,
 test_df = pd.read_csv(data_folder / "test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
-train_df = train_df.head(5)
-test_df = test_df.head(5)
-hold_out_df = hold_out_df.head(5)
-
 # Create pickled embeddings
 embeddings = ["glove", "fasttext", "bert"]
 out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
