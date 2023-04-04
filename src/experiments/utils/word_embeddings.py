@@ -108,6 +108,7 @@ def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-ba
     else:
         return [_apply_fixed_sentence_length(torch.tensor(e).squeeze(), sentence_length=sentence_length, emb_dim=emb_dim) for e in out] if sentence_length else [torch.tensor(e).squeeze() for e in out]
 
+
     
 def get_glove_word_vectors(input: str or List[str], sentence_length: int = None, size_small: bool = True):
     """Generates word vectors in the format of GloVe, using torch.vocab.
@@ -124,12 +125,13 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
     """
     def _extract_embeddings(input):
         tokenized_input = _tokenize_with_preprocessing(input)
+
+        if len(tokenized_input) == 0:
+            return
+
         emb_dim = 50 if size_small else 300
-        try:
-            glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
-            res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
-        except RuntimeError:
-            print("Input words: ", tokenized_input)
+        glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
+        res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim)
         
@@ -155,13 +157,14 @@ def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = No
 
     def _extract_embeddings(input):
         tokenized_input = _tokenize_with_preprocessing(input)
-        try:
-            vec = FastText(language="en") # 6.6GB
-            res = vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
-            emb_dim = 300
-        except RuntimeError:
-            print("Input words: ", tokenized_input)
+
+        if len(tokenized_input == 0):
+            return
         
+        vec = FastText(language="en") # 6.6GB
+        res = vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
+        
+        emb_dim = 300
         res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim)
         
         return res

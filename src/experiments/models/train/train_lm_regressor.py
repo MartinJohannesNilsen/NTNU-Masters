@@ -19,6 +19,8 @@ def _get_dataframe(dataset: str = "all_labeled"):
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
+        "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+        "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
         "train": base_path / "train_test" / "train.csv",
         "test": base_path / "train_test" / "test.csv",
         "all_labeled": base_path / "all_labeled.csv",
@@ -145,16 +147,17 @@ def train(
 
 
 if __name__ == "__main__":
+
     # Parameters
     VAL_PORTION = 0.2
     MODEL_NAME = "distilbert-base-uncased"
     MAX_LENGTH = 512
-    NUM_EPOCHS = 20
+    NUM_EPOCHS = 10
     SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings")
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset="train")
+    df = _get_dataframe(dataset="train_no_stair_twitter")
 
     # Set X and y
     X = df.text.values.tolist()

@@ -1,19 +1,18 @@
 #!/bin/sh
 ##SBATCH --partition=GPUQ
-##SBATCH --partition=CPUQ
+#SBATCH --partition=CPUQ
 ##SBATCH --partition=short
-#SBATCH --partition=GPUQ
 #SBATCH --account=share-ie-idi
-#SBATCH --time=5:00:00
+#SBATCH --time=10:00:00
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint="P100|V100"
 #SBATCH --nodes=1                          # 1 compute nodes
-#SBATCH --ntasks-per-node=1                # 1 task per compute node
+##SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=test_lm
-#SBATCH --output=test_lm.out
-#SBATCH --mail-user=martijni@stud.ntnu.no
+#SBATCH --job-name=create_glove_embeddings
+#SBATCH --output=glove_embeddings_no_stair_twitter.out
+#SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
 WORKDIR=${SLURM_SUBMIT_DIR}
@@ -39,9 +38,11 @@ echo "Activating conda environment"
 conda activate env
 echo "Pip install requirements"
 pip install -r requirements.txt --user -q
+echo "Install nltk stopwords"
+python -m nltk.downloader stopwords
 
-cd "src/experiments/models/test"
+cd "src/dataset_creation"
 
-python3 test_lm_regressor.py
+python3 create_glove_embeddings.py
 
 uname -a

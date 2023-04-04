@@ -1,18 +1,18 @@
 #!/bin/sh
 ##SBATCH --partition=GPUQ
 #SBATCH --partition=CPUQ
-#SBATCH --partition=short
+##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=10:00:00
+#SBATCH --time=24:00:00
 #SBATCH --mem=16G
-#SBATCH --gres=gpu:1
-#SBATCH --constraint="P100|V100"
-#SBATCH --nodes=1                          # 1 compute nodes
-#SBATCH --ntasks-per-node=1                # 1 task per compute node
-#SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=create_glove_embeddings
-#SBATCH --output=glove_embeddings_no_stair_twitter.out
-#SBATCH --mail-user=olejlia@stud.ntnu.no
+##SBATCH --gres=gpu:1
+##SBATCH --constraint="P100|V100"
+##SBATCH --nodes=1                          # 1 compute nodes
+##SBATCH --ntasks-per-node=1                # 1 task per compute node
+##SBATCH --cpus-per-task=2                  # 2 CPU cores
+#SBATCH --job-name=pickle_embeddings
+#SBATCH --output=out/pickle_embeddings.out
+#SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
 WORKDIR=${SLURM_SUBMIT_DIR}
@@ -28,10 +28,12 @@ echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
 
+# Load idun modules
 module purge
 module load Anaconda3/2020.07
 module load Python/3.8.6-GCCcore-10.2.0
 
+# Create environment and install requirements
 echo "Creating conda environment"
 conda create --force --name env
 echo "Activating conda environment"
@@ -41,8 +43,10 @@ pip install -r requirements.txt --user -q
 echo "Install nltk stopwords"
 python -m nltk.downloader stopwords
 
+# Run code
+echo "Running code"
 cd "src/dataset_creation"
+python3 create_pickled_embeddings.py
 
-python3 create_glove_embeddings.py
-
+# Print idun stats
 uname -a

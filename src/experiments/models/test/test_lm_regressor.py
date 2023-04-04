@@ -16,6 +16,8 @@ def _get_dataframe(dataset: str = "all_labeled"):
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
+        "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+        "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
         "train": base_path / "train_test" / "train.csv",
         "test": base_path / "train_test" / "test.csv",
         "all_labeled": base_path / "all_labeled.csv",
@@ -38,6 +40,7 @@ def _get_dataframe(dataset: str = "all_labeled"):
     df = df.drop(["date", "name"], axis=1)
 
     return df
+
 
 def inference(
         text: str, 
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     method = "test"
 
     # Data
-    df = _get_dataframe(dataset="test")
+    df = _get_dataframe(dataset="test_no_stair_twitter")
     
 
     if (method == "inference"):

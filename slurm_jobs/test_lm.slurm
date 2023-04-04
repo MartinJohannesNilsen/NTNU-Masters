@@ -1,17 +1,17 @@
 #!/bin/sh
-#SBATCH --partition=GPUQ
+##SBATCH --partition=GPUQ
 ##SBATCH --partition=CPUQ
-##SBATCH --partition=short
+#SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=24:00:00
+#SBATCH --time=10:00:00
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint="P100|V100"
 #SBATCH --nodes=1                          # 1 compute nodes
-##SBATCH --ntasks-per-node=1                # 1 task per compute node
+#SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=train_lm
-#SBATCH --output=out/train_lm.out
+#SBATCH --job-name=test_lm
+#SBATCH --output=out/test_lm.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -43,8 +43,8 @@ pip install -r requirements.txt --user -q
 
 # Run code
 echo "Running code"
-cd "src/experiments/models/train"
-python3 train_lm_regressor.py
+cd "src/experiments/models/test"
+python3 test_lm_regressor.py
 
 # Print idun stats
 uname -a

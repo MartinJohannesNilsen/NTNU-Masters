@@ -1,0 +1,43 @@
+Information
+ID: 17723209
+Name: pickle_embeddings
+Directory: /cluster/home/martijni/NTNU-Masters
+Nodes: idun-03-55
+Number of nodes: 1
+Cores: 1
+Cores per node: 1
+Number of tasks per core:
+Creating conda environment
+WARNING: A conda environment already exists at '/cluster/home/martijni/.conda/envs/env'
+Remove existing environment (y/[n])? 
+
+CondaSystemExit: Exiting.
+
+Activating conda environment
+
+CommandNotFoundError: Your shell has not been properly configured to use 'conda activate'.
+To initialize your shell, run
+
+    $ conda init <SHELL_NAME>
+
+Currently supported shells are:
+  - bash
+  - fish
+  - tcsh
+  - xonsh
+  - zsh
+  - powershell
+
+See 'conda init --help' for more information and options.
+
+IMPORTANT: You may need to close and restart your shell after running 'conda init'.
+
+
+Pip install requirements
+Install nltk stopwords
+/cluster/apps/eb/software/Python/3.8.6-GCCcore-10.2.0/lib/python3.8/runpy.py:127: RuntimeWarning: 'nltk.downloader' found in sys.modules after import of package 'nltk', but prior to execution of 'nltk.downloader'; this may result in unpredictable behaviour
+  warn(RuntimeWarning(msg))
+[nltk_data] Downloading package stopwords to
+[nltk_data]     /cluster/home/martijni/nltk_data...
+[nltk_data]   Package stopwords is already up-to-date!
+Running code
