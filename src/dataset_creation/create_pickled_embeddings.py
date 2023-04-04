@@ -27,6 +27,10 @@ train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", qu
 test_df = pd.read_csv(data_folder / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
+# TODO This is just for test purposes
+# train_df = train_df.sample(n=100)
+# test_df = test_df.sample(n=100)
+
 # Create pickled embeddings
 embeddings = ["glove", "fasttext", "bert"]
 out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
