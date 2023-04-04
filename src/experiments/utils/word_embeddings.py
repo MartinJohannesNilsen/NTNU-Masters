@@ -158,7 +158,7 @@ def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = No
     def _extract_embeddings(input):
         tokenized_input = _tokenize_with_preprocessing(input)
 
-        if len(tokenized_input == 0):
+        if len(tokenized_input) == 0:
             return
         
         vec = FastText(language="en") # 6.6GB
