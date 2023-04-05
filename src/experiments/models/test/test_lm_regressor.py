@@ -9,13 +9,18 @@ import pandas as pd
 from csv import QUOTE_NONE
 import csv
 csv.field_size_limit(sys.maxsize)
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
+experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
+sys.path.append(experiments_dir)
+from experiments.utils.metrics import get_metrics, print_metrics_comprehensive
+
 
 def _get_dataframe(dataset: str = "all_labeled"):
     # Extract basepath
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
+        "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+        "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
         "train": base_path / "train_test" / "train.csv",
         "test": base_path / "train_test" / "test.csv",
         "all_labeled": base_path / "all_labeled.csv",
@@ -39,6 +44,7 @@ def _get_dataframe(dataset: str = "all_labeled"):
 
     return df
 
+
 def inference(
         text: str, 
         checkpoint: Path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings" / "checkpoint-50",
@@ -61,9 +67,10 @@ def inference(
 
 
 def test(
-        texts: List[str], 
-        checkpoint=Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings" / "checkpoint-50", 
-        threshold=0.75,
+        texts: List[str],
+        labels: List[str], 
+        checkpoint: Path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings" / "checkpoint-50", 
+        thresholds: List[float] =[0.5],
         model_name: str = "distilbert-base-uncased",
         max_length: int = 512
         ):
@@ -75,31 +82,29 @@ def test(
     # Forward pass for all texts
     model.eval()
     predictions = []
-    y_pred_binary = []
-    y_pred_threshold = []
     
     for text in texts:
         encoding = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=max_length)
-        out = model(**encoding)
-        pred = torch.sigmoid(out.logits).tolist()[0][0]
+        model_out = model(**encoding)
+        pred = torch.sigmoid(model_out.logits).tolist()[0][0]
         predictions.append(pred)
-        y_pred_binary.append(1 if pred > 0.5 else 0)
-        y_pred_threshold.append(1 if pred > threshold else 0)
 
-    return pred, y_pred_binary, y_pred_threshold
+    for threshold in thresholds:
+        print(f"\nThreshold = {threshold}")
+        print_metrics_comprehensive(get_metrics(predictions=[1 if pred > threshold else 0 for pred in predictions], labels=labels))
 
 
 if __name__ == "__main__":
 
     # Get checkpoint
     models = Path(os.path.abspath(__file__)).parents[1] / "saved_models"
-    checkpoint = models / "lm_regressor" / "bert_encodings" / "checkpoint-24340"
+    checkpoint = models / "lm_regressor" / "distilbert" / "checkpoint-24340"
 
     # "inference", "test"
     method = "test"
 
     # Data
-    df = _get_dataframe(dataset="test")
+    df = _get_dataframe(dataset="test_no_stair_twitter")
     
 
     if (method == "inference"):
@@ -107,83 +112,7 @@ if __name__ == "__main__":
     elif (method == "test"):
         texts = df.text.values
         labels = df.label.values
-        threshold = 0.75
-        outputs, y_pred_binary, y_pred_threshold = test(texts, 
-                                                        checkpoint=checkpoint,
-                                                        threshold=threshold, 
-                                                        model_name = "distilbert-base-uncased", 
-                                                        max_length = 512)
+        thresholds = [0.5]
+        test(texts, labels, checkpoint=checkpoint, thresholds=thresholds, model_name = "distilbert-base-uncased", max_length = 512)
 
         
-        # Stats
-
-        # Get binary stats
-        tn, fp, fn, tp = confusion_matrix(labels, y_pred_binary).ravel()
-        precision, recall, fscore, _ = precision_recall_fscore_support(labels, y_pred_binary, average="macro", zero_division=0)
-        roc_auc = roc_auc_score(labels, y_pred_binary)
-        binary_stats = {
-            "tn": tn,
-            "fp": fp,
-            "fn": fn,
-            "tp": tp,
-            "accuracy": (tp+tn)/(tp+fp+fn+tn),
-            "precision": precision,
-            "recall": recall,
-            "specificity": tn / (tn + fp),
-            "f1_score": fscore,
-            "roc_auc": roc_auc
-        }
-
-        # Get threshold stats
-        tn, fp, fn, tp = confusion_matrix(labels, y_pred_threshold).ravel()
-        precision, recall, fscore, _ = precision_recall_fscore_support(labels, y_pred_threshold, average="macro", zero_division=0)
-        roc_auc = roc_auc_score(labels, y_pred_threshold)
-        threshold_stats = {
-            "tn": tn,
-            "fp": fp,
-            "fn": fn,
-            "tp": tp,
-            "accuracy": (tp+tn)/(tp+fp+fn+tn),
-            "precision": precision,
-            "recall": recall,
-            "specificity": tn / (tn + fp),
-            "f1_score": fscore,
-            "roc_auc": roc_auc
-        }
-
-        # Print stats
-        print("-"*5, f"Stats ", "-"*5)
-        print(f"\nConfusion matrix")
-        print(f"\"The number of True Positives, True Negatives, False Positives and False Negatives.\"")
-        print(f"Binary:           TP: {binary_stats['tp']} | TN: {binary_stats['tn']} | FP: {binary_stats['fp']} | FN: {binary_stats['fn']}")
-        print(f"Threshold = {threshold}: TP: {threshold_stats['tp']} | TN: {threshold_stats['tn']} | FP: {threshold_stats['fp']} | FN: {threshold_stats['fn']}")
-
-        print(f"\nAccuracy ((TP + TN) / (TP + FP + FN + TN))")
-        print(f"\"The percentage of all classifications which is true.\"")
-        print(f"Binary: {round(binary_stats['accuracy']*100, 3)}%")
-        print(f"Threshold = {threshold}: {round(threshold_stats['accuracy']*100, 3)}%")
-
-        print(f"\nPrecision (TP / (TP + FP))")
-        print(f"\"The percentage of classified positives which is true.\"")
-        print(f"Binary: {round(binary_stats['precision']*100, 3)}%")
-        print(f"Threshold = {threshold}: {round(threshold_stats['precision']*100, 3)}%")
-        
-        print(f"\nRecall (TP / (TP + FN))")
-        print(f"\"Out of all the actual positives, how many did we correctly classify?\"")
-        print(f"Binary: {round(binary_stats['recall']*100, 3)}%")
-        print(f"Threshold = {threshold}: {round(threshold_stats['recall']*100, 3)}%")
-
-        print(f"\nSpecificity (TN / (TN + FP))")
-        print(f"\"Out of all the actual negatives, how many did we correctly classify?\"")
-        print(f"Binary: {round(binary_stats['specificity']*100, 3)}%")
-        print(f"Threshold = {threshold}: {round(threshold_stats['specificity']*100, 3)}%")
-        
-        print(f"\nF1-Score (2 * (precicion * recall) / (precision + recall))")
-        print(f"\"The harmonic mean/weighted average of precision and recall.\"")
-        print(f"Binary: {round(binary_stats['f1_score']*100, 3)}%")
-        print(f"Threshold = {threshold}: {round(threshold_stats['f1_score']*100, 3)}%")
-
-        print(f"\nAUC (Area under ROC curve, ROC-AUC)")
-        print(f"\"Tells us about the capability of model in distinguishing the classes\"")
-        print(f"Binary: {round(binary_stats['roc_auc']*100, 3)}%")
-        print(f"Threshold = {threshold}: {round(threshold_stats['roc_auc']*100, 3)}%")

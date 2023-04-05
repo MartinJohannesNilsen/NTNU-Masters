@@ -18,29 +18,35 @@ def replace_text_with_embedding(df: pd.DataFrame, method = "glove"):
     else:
         return df
     
-    df = df[df["text"].map(len) > 0]
+    df = df[df['text'].notna()]
     return df
 
 # Load data
 data_folder = Path(os.path.abspath(__file__)).parents[0] / "data" / "train_test"
-train_df = pd.read_csv(data_folder / "train.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
-test_df = pd.read_csv(data_folder / "test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+test_df = pd.read_csv(data_folder / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
+# TODO This is just for test purposes
+# train_df = train_df.sample(n=100)
+# test_df = test_df.sample(n=100)
+
 # Create pickled embeddings
-embeddings = ["glove", "fasttext", "bert"]
+# embeddings = ["glove", "fasttext", "bert"]
+embeddings = ["bert", "fasttext"]
 out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
 
 
 for emb_type in embeddings:
+    print(f"Type: {emb_type}")
 
     embedding_train_df = train_df.copy()
     embedding_train_df = replace_text_with_embedding(embedding_train_df, emb_type)
-    embedding_train_df.to_pickle(out_path / f"train_{emb_type}.pkl", compression="bz2")
+    embedding_train_df.to_pickle(out_path / f"train_no_stair_twitter_{emb_type}.pkl", compression="bz2")
 
     embedding_test_df = test_df.copy()
     embedding_test_df = replace_text_with_embedding(embedding_test_df, emb_type)
-    embedding_test_df.to_pickle(out_path / f"test_{emb_type}.pkl", compression="bz2")
+    embedding_test_df.to_pickle(out_path / f"test_no_stair_twitter_{emb_type}.pkl", compression="bz2")
 
     embedding_hold_out_df = hold_out_df.copy()
     embedding_hold_out_df = replace_text_with_embedding(embedding_hold_out_df, emb_type)

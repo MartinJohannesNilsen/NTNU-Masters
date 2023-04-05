@@ -1,14 +1,18 @@
+tr:
+	chmod u+x slurm_jobs/train_lm.slurm && sbatch slurm_jobs/train_lm.slurm
+
+te:
+	chmod u+x slurm_jobs/test_lm.slurm && sbatch slurm_jobs/test_lm.slurm
+
+pi:
+	chmod u+x slurm_jobs/pickle_embeddings.slurm && sbatch slurm_jobs/pickle_embeddings.slurm
+
+
 qm:
 	squeue -u martijni
 
 q:
 	squeue
-	
-tr:
-	chmod u+x train_lm.slurm && sbatch train_lm.slurm
-
-te:
-	chmod u+x test_lm.slurm && sbatch test_lm.slurm
 
 s:
 	scancel $(id)
