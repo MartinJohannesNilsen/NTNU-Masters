@@ -18,4 +18,5 @@ matplotlib
 gensim
 beautifulsoup4
 wandb
+seaborn
 tabulate
