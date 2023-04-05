@@ -96,7 +96,8 @@ if __name__ == "__main__":
 
     # Get checkpoint
     models = Path(os.path.abspath(__file__)).parents[1] / "saved_models"
-    checkpoint = models / "lm_regressor" / "bert_encodings" / "checkpoint-24340"
+    checkpoint = models / "lm_regressor" / "bert_encodings" / "checkpoint-3850"
+    threshold = 0.6
 
     # "inference", "test"
     method = "test"
@@ -110,7 +111,6 @@ if __name__ == "__main__":
     elif (method == "test"):
         texts = df.text.values
         labels = df.label.values
-        threshold = 0.75
         outputs, y_pred_binary, y_pred_threshold = test(texts, 
                                                         checkpoint=checkpoint,
                                                         threshold=threshold, 
@@ -187,6 +187,6 @@ if __name__ == "__main__":
         print(f"Threshold = {threshold}: {round(threshold_stats['f1_score']*100, 3)}%")
 
         print(f"\nAUC (Area under ROC curve, ROC-AUC)")
-        print(f"\"Tells us about the capability of model in distinguishing the classes\"")
+        print(f"\"Tells us about the capability of the model in distinguishing the classes\"")
         print(f"Binary: {round(binary_stats['roc_auc']*100, 3)}%")
         print(f"Threshold = {threshold}: {round(threshold_stats['roc_auc']*100, 3)}%")

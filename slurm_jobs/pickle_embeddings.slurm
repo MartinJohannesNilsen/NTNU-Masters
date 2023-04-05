@@ -3,8 +3,8 @@
 #SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=24:00:00
-#SBATCH --mem=16G
+#SBATCH --time=48:00:00
+#SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes

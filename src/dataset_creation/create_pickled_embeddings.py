@@ -32,7 +32,8 @@ hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", 
 # test_df = test_df.sample(n=100)
 
 # Create pickled embeddings
-embeddings = ["glove", "fasttext", "bert"]
+# embeddings = ["glove", "fasttext", "bert"]
+embeddings = ["bert", "fasttext"]
 out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
 
 
