@@ -30,7 +30,7 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         model.fit(X, y)
 
         # Save the model to disk
-        model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'naive_bayes' / f'{embedding_type}_embeddings'
+        model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'knn' / f'{embedding_type}_embeddings'
         model_dir.mkdir(parents=True, exist_ok=True)
         model_path = str(model_dir / name)
         pickle.dump(model, open(model_path, 'wb'))
@@ -76,8 +76,9 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
 
 if __name__ == "__main__":
     embeddings = ["glove", "fasttext", "bert"]
+    # embeddings = ["glove"]
     for emb_type in embeddings:
-       print(embeddings)
-       train_embeddings(embedding_type=emb_type)
-    #    train_embeddings(embedding_type=emb_type, cross_validation_splits=5)
+       print(emb_type)
+    #    train_embeddings(embedding_type=emb_type)
+       train_embeddings(embedding_type=emb_type, cross_validation_splits=5)
 
