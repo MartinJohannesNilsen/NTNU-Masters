@@ -18,3 +18,4 @@ matplotlib
 gensim
 beautifulsoup4
 wandb
+tabulate

@@ -5,10 +5,11 @@ import pandas as pd
 from sklearn.svm import SVC
 import pickle   
 from sklearn.model_selection import KFold
+from tabulate import tabulate
 import sys
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
-from experiments.utils.metrics import get_metrics, print_metrics_comprehensive
+from experiments.utils.metrics import get_metrics, get_average_metrics
 
 
 def train_embeddings(embedding_type = "bert", cross_validation_splits: int = None):
@@ -23,6 +24,7 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
     y = np.array(df["label"].values)
 
     def _fit_and_save_model(X, y, name = 'sklearn_model.sav'):
+
         # Fit the model to data
         model = SVC()
         model.fit(X, y)
@@ -37,25 +39,45 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
 
 
     if cross_validation_splits:
-
         # Define the K-fold Cross Validator
         kfold = KFold(n_splits=cross_validation_splits, shuffle=True)
 
         # K-fold Cross Validation model evaluation
         fold_no = 1
-        stats = []
+        metrics = {}
         for train, test in kfold.split(X, y):
-            _, model = _fit_and_save_model(X[train], y[test], name=f"sklearn_model_fold_{fold_no}")
-            print(f"Fold {fold_no}")
             
-            # Get 
-            y_pred = [model.predict(element) for element in X[test]]
-            print(get_metrics(y_pred, y[test]))
+            # Fit the model to data
+            model = SVC()
+            model.fit(X[train], y[train])
+            
+            # Get preds
+            y_pred = model.predict(X[test])
+            metrics[f"Fold {fold_no}"] = get_metrics(y_pred, y[test])
+
+            fold_no += 1
+
+        # Average
+        metrics["Average"] = get_average_metrics(metrics_array=metrics.values())
+
+        # 2D array for tabulate
+        all = []
+        for k, v in metrics.items():
+            out = [k]
+            for metric in v.values():
+                out.append(round(metric, 3)) if metric else out.append(None)
+            all.append(out)
+
+        print(tabulate(all, headers=["Fold", "TN", "FP", "FN", "TP", "Accuracy", "Precision", "Recall", "Specificity", "F1-score", "ROC-AUC"]))
+
 
     else:
-        return _fit_and_save_model(X, y)
+        _fit_and_save_model(X, y)
 
 if __name__ == "__main__":
-    for emb_type in ["glove", "fasttext", "bert"]:
-        train_embeddings(embedding_type=emb_type)
-    
+    embeddings = ["glove", "fasttext", "bert"]
+    for emb_type in embeddings:
+       print(embeddings)
+       train_embeddings(embedding_type=emb_type)
+    #    train_embeddings(embedding_type=emb_type, cross_validation_splits=5)
+

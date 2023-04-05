@@ -1,5 +1,6 @@
 from typing import List
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
+from collections import defaultdict
 
 
 def get_metrics(predictions: List[float], labels: List[float]) -> dict:
@@ -14,9 +15,12 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
     """
     
     # Gather performance metrics
-    tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
+    tn, fp, fn, tp = confusion_matrix(labels, predictions, labels=[0, 1]).ravel()
     precision, recall, fscore, _ = precision_recall_fscore_support(labels, predictions, average="macro", zero_division=0)
-    roc_auc = roc_auc_score(labels, predictions)
+    try:
+        roc_auc = roc_auc_score(labels, predictions)
+    except:
+        roc_auc = None
     
     # Create dictionary of metrics
     metrics = {
@@ -34,6 +38,23 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
 
     return metrics
 
+def get_average_metrics(metrics_array: List[dict]):
+
+    # Create a combined dictionary with all values
+    combined_dict = defaultdict(list)
+    for d in metrics_array:
+        for key, value in d.items():
+            if value is not None:
+                combined_dict[key].append(value)
+
+    # Create average dictionary
+    average = {}
+    for key, value in combined_dict.items():
+        average[key] = sum(value) / len(value)
+
+    return average
+
+
 def print_metrics_simplified(metrics: dict):
     print(f"TP: {metrics['tp']} | TN: {metrics['tn']} | FP: {metrics['fp']} | FN: {metrics['fn']}")
     print(f"Accuracy: {round(metrics['accuracy']*100, 3)}%")
@@ -41,7 +62,7 @@ def print_metrics_simplified(metrics: dict):
     print(f"Recall: {round(metrics['recall']*100, 3)}%")
     print(f"Specificity: {round(metrics['specificity']*100, 3)}%")
     print(f"F1-score: {round(metrics['f1_score']*100, 3)}%")
-    print(f"AUC: {round(metrics['roc_auc']*100, 3)}%")
+    print(f"AUC: {round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "AUC: undefined")
 
 
 def print_metrics_comprehensive(metrics: dict):
@@ -74,4 +95,34 @@ def print_metrics_comprehensive(metrics: dict):
 
     print(f"\nAUC (Area under ROC curve, ROC-AUC)")
     print(f"\"Tells us about the capability of model in distinguishing the classes\"")
-    print(f"{round(metrics['roc_auc']*100, 3)}%")
+    print(f"{round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "undefined")
+
+if __name__ == "__main__":
+    
+    metrics = {
+        "tn": 1,
+        "fp": 2,
+        "fn": 3,
+        "tp": 4,
+        "accuracy": 5,
+        "precision": 6,
+        "recall": 7,
+        "specificity": 8,
+        "f1_score": 9,
+        "roc_auc": None
+    }
+
+    metrics2 = {
+        "tn": 1,
+        "fp": 2,
+        "fn": 3,
+        "tp": 4,
+        "accuracy": 5,
+        "precision": 6,
+        "recall": 7,
+        "specificity": 8,
+        "f1_score": 9,
+        "roc_auc": 10
+    }
+
+    get_average_metrics([metrics, metrics2])

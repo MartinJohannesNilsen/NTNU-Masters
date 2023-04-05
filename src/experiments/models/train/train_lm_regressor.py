@@ -35,9 +35,6 @@ def _get_dataframe(dataset: str = "all_labeled"):
 
     # Read csv
     df = pd.read_csv(datasets[dataset], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
-    
-    # Remove manifestos # TODO Might want to use these, but create smaller posts instead
-    # all_labeled_df = all_labeled_df[all_labeled_df.name != "manifestos"]
 
     # Filter out date and name
     df = df.drop(["date", "name"], axis=1)

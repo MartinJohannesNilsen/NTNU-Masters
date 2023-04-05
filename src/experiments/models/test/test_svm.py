@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold
-from sklearn.model_selection import cross_val_score
 import pickle
 import sys
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
