@@ -1,7 +1,7 @@
 # Imports
 from bs4 import BeautifulSoup
 import torch
-from nltk.tokenize import RegexpTokenizer, word_tokenize
+from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
 from transformers import AutoTokenizer, AutoModel
@@ -23,14 +23,9 @@ def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, 
     """
     
     if embedding.shape[0] < sentence_length:
-        try:
-            req_padding = sentence_length - embedding.shape[0]
-            pad_tensor = torch.zeros(req_padding, emb_dim)
-            embedding = torch.cat((embedding, pad_tensor), dim=0)
-        except RuntimeError:
-            print("embedding b4 pad: ", embedding)
-            print("padding while pad: ", req_padding)
-            print("pad_tensor while pad: ", pad_tensor)
+        req_padding = sentence_length - embedding.shape[0]
+        pad_tensor = torch.zeros(req_padding, emb_dim)
+        embedding = torch.cat((embedding, pad_tensor), dim=0)
     elif embedding.shape[0] > sentence_length:
         embedding = embedding[:sentence_length, :]
     return embedding
