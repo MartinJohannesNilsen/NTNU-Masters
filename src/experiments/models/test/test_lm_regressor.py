@@ -11,7 +11,7 @@ import csv
 csv.field_size_limit(sys.maxsize)
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
-from experiments.utils.metrics import get_metrics, print_metrics
+from experiments.utils.metrics import get_metrics, print_metrics_comprehensive
 
 
 def _get_dataframe(dataset: str = "all_labeled"):
@@ -91,7 +91,7 @@ def test(
 
     for threshold in thresholds:
         print(f"\nThreshold = {threshold}")
-        print_metrics(get_metrics(predictions=[1 if pred > threshold else 0 for pred in predictions], labels=labels))
+        print_metrics_comprehensive(get_metrics(predictions=[1 if pred > threshold else 0 for pred in predictions], labels=labels))
 
 
 if __name__ == "__main__":

@@ -34,8 +34,17 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
 
     return metrics
 
+def print_metrics_simplified(metrics: dict):
+    print(f"TP: {metrics['tp']} | TN: {metrics['tn']} | FP: {metrics['fp']} | FN: {metrics['fn']}")
+    print(f"Accuracy: {round(metrics['accuracy']*100, 3)}%")
+    print(f"Precision: {round(metrics['precision']*100, 3)}%")
+    print(f"Recall: {round(metrics['recall']*100, 3)}%")
+    print(f"Specificity: {round(metrics['specificity']*100, 3)}%")
+    print(f"F1-score: {round(metrics['f1_score']*100, 3)}%")
+    print(f"AUC: {round(metrics['roc_auc']*100, 3)}%")
 
-def print_metrics(metrics: dict):
+
+def print_metrics_comprehensive(metrics: dict):
 
     # Print metrics
     print("-"*5, f"Performance metrics", "-"*5)

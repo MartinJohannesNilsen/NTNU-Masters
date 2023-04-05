@@ -152,7 +152,7 @@ if __name__ == "__main__":
     VAL_PORTION = 0.2
     MODEL_NAME = "distilbert-base-uncased"
     MAX_LENGTH = 512
-    NUM_EPOCHS = 10
+    NUM_EPOCHS = 5
     SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert")
     LOG_PATH = "./logs"
 
