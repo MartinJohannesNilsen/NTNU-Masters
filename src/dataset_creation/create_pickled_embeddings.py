@@ -33,7 +33,8 @@ hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", 
 
 # Create pickled embeddings
 # embeddings = ["glove", "fasttext", "bert"]
-embeddings = ["bert", "fasttext"]
+#embeddings = ["bert", "fasttext"]
+embeddings = ["glove"]
 out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
 
 
@@ -42,11 +43,11 @@ for emb_type in embeddings:
 
     embedding_train_df = train_df.copy()
     embedding_train_df = replace_text_with_embedding(embedding_train_df, emb_type)
-    embedding_train_df.to_pickle(out_path / f"train_no_stair_twitter_{emb_type}.pkl", compression="bz2")
+    embedding_train_df.to_pickle(out_path / f"train_sliced_stair_twitter_{emb_type}.pkl", compression="bz2")
 
     embedding_test_df = test_df.copy()
     embedding_test_df = replace_text_with_embedding(embedding_test_df, emb_type)
-    embedding_test_df.to_pickle(out_path / f"test_no_stair_twitter_{emb_type}.pkl", compression="bz2")
+    embedding_test_df.to_pickle(out_path / f"test_sliced_stair_twitter_{emb_type}.pkl", compression="bz2")
 
     embedding_hold_out_df = hold_out_df.copy()
     embedding_hold_out_df = replace_text_with_embedding(embedding_hold_out_df, emb_type)

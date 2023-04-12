@@ -13,10 +13,10 @@ test_df = pd.read_csv(data_folder / "train_test" / "test.csv", sep="‎", quotin
 hold_out_df = pd.read_csv(data_folder / "train_test" / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
 def get_glove_emb(df: pd.DataFrame):
-    df["text"] = df["text"].map(lambda a: preprocess_text(a)) # Preprocess into tokens to send to glove emb method
+    df["text"] = df["text"].map(lambda utterance: preprocess_text(utterance)) # Preprocess into tokens to send to glove emb method
     df = df[df["text"].map(len) > 0] # Some entries from the previous step can become empty lists. Remove these
 
-    df["text"] = df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=512))
+    df["text"] = df["text"].map(lambda utterance: get_glove_word_vectors(utterance, sentence_length=512, size_small=False))
 
     return df
 

@@ -43,6 +43,7 @@ python -m nltk.downloader stopwords
 
 cd "src/dataset_creation"
 
+echo Creating glove embeddings...
 python3 create_glove_embeddings.py
 
 uname -a
