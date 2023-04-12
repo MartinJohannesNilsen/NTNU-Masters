@@ -19,6 +19,8 @@ def _get_dataframe(dataset: str = "all_labeled"):
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
+        "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+        "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
         "train": base_path / "train_test" / "train.csv",
         "test": base_path / "train_test" / "test.csv",
         "all_labeled": base_path / "all_labeled.csv",
@@ -33,9 +35,6 @@ def _get_dataframe(dataset: str = "all_labeled"):
 
     # Read csv
     df = pd.read_csv(datasets[dataset], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
-    
-    # Remove manifestos # TODO Might want to use these, but create smaller posts instead
-    # all_labeled_df = all_labeled_df[all_labeled_df.name != "manifestos"]
 
     # Filter out date and name
     df = df.drop(["date", "name"], axis=1)
@@ -78,7 +77,7 @@ def train(
         max_length: int = 512, 
         model_name: str = "distilbert-base-uncased", 
         num_epochs: int = 5, 
-        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings"), 
+        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
         log_path: str = "./logs"
         ):
     
@@ -145,16 +144,17 @@ def train(
 
 
 if __name__ == "__main__":
+
     # Parameters
     VAL_PORTION = 0.2
     MODEL_NAME = "distilbert-base-uncased"
     MAX_LENGTH = 512
-    NUM_EPOCHS = 20
-    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings")
+    NUM_EPOCHS = 5
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert")
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset="train")
+    df = _get_dataframe(dataset="train_no_stair_twitter")
 
     # Set X and y
     X = df.text.values.tolist()

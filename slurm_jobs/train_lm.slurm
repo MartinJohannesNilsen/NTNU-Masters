@@ -1,9 +1,9 @@
 #!/bin/sh
-##SBATCH --partition=GPUQ
+#SBATCH --partition=GPUQ
 ##SBATCH --partition=CPUQ
-#SBATCH --partition=short
+##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=1:00:00
+#SBATCH --time=24:00:00
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint="P100|V100"
@@ -11,7 +11,7 @@
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --job-name=train_lm
-#SBATCH --output=train_lm.out
+#SBATCH --output=out/train_lm.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -28,10 +28,12 @@ echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
 
+# Load idun modules
 module purge
 module load Anaconda3/2020.07
 module load Python/3.8.6-GCCcore-10.2.0
 
+# Create environment and install requirements
 echo "Creating conda environment"
 conda create --force --name env
 echo "Activating conda environment"
@@ -39,8 +41,10 @@ conda activate env
 echo "Pip install requirements"
 pip install -r requirements.txt --user -q
 
+# Run code
+echo "Running code"
 cd "src/experiments/models/train"
-
 python3 train_lm_regressor.py
 
+# Print idun stats
 uname -a

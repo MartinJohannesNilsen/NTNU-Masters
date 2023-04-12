@@ -10,8 +10,8 @@
 #SBATCH --nodes=1                          # 1 compute nodes
 #SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=test_lm
-#SBATCH --output=test_lm.out
+#SBATCH --job-name=_template
+#SBATCH --output=out/_template.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -28,10 +28,12 @@ echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
 
+# Load idun modules
 module purge
 module load Anaconda3/2020.07
 module load Python/3.8.6-GCCcore-10.2.0
 
+# Create environment and install requirements
 echo "Creating conda environment"
 conda create --force --name env
 echo "Activating conda environment"
@@ -39,8 +41,10 @@ conda activate env
 echo "Pip install requirements"
 pip install -r requirements.txt --user -q
 
-cd "src/experiments/models/test"
+# Run code
+echo "Running code"
+cd "src/dataset_creation"
+python3 create_pickled_embeddings.py
 
-python3 test_lm_regressor.py
-
+# Print idun stats
 uname -a
