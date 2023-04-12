@@ -18,7 +18,7 @@ def get_data(embedding_type = "glove", data_type = "train"):
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
 
     # Get pickled dataframe with embeddings
-    data_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"DEMO_{data_type}_no_stair_twitter_{embedding_type}.pkl"
+    data_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"{data_type}_sliced_stair_twitter_{embedding_type}.pkl"
     df = pd.read_pickle(data_path, compression="bz2")
 
     # Train data inputs X and labels y
@@ -46,6 +46,8 @@ x_test, y_test = get_data(embedding_type="glove", data_type="test")
 all_metrics = []
 for k_name, k in kns.items():
 
+    print(f"Training for {k_name}")
+
     gp = GaussianProcessClassifier(kernel=k)
     gp.fit(x_train, y_train)
 
@@ -54,6 +56,7 @@ for k_name, k in kns.items():
     kernel_metrics = [k_name]
     for metric in get_metrics(y_pred, y_test).values():
         kernel_metrics.append(metric)
+    print(kernel_metrics)
     all_metrics.append(kernel_metrics)
 
 
