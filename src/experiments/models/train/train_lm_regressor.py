@@ -77,7 +77,7 @@ def train(
         max_length: int = 512, 
         model_name: str = "distilbert-base-uncased", 
         num_epochs: int = 5, 
-        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "bert_encodings"), 
+        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
         log_path: str = "./logs"
         ):
     

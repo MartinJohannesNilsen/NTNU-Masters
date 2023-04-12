@@ -77,7 +77,7 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
 if __name__ == "__main__":
     embeddings = ["glove", "fasttext", "bert"]
     for emb_type in embeddings:
-       print(embeddings)
+       print(emb_type)
        train_embeddings(embedding_type=emb_type)
     #    train_embeddings(embedding_type=emb_type, cross_validation_splits=5)
 
