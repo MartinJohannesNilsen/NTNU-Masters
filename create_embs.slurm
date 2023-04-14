@@ -1,7 +1,7 @@
 #!/bin/sh
 ##SBATCH --partition=GPUQ
 #SBATCH --partition=CPUQ
-##SBATCH --partition=short
+##SBATCH --partition=
 #SBATCH --account=share-ie-idi
 #SBATCH --time=48:00:00
 #SBATCH --mem=32G
@@ -10,9 +10,9 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=pickle_embeddings
-#SBATCH --output=out/pickle_embeddings.out
-#SBATCH --mail-user=martijni@stud.ntnu.no
+#SBATCH --job-name=create_embs_hdf5
+#SBATCH --output=out/create_embs.out
+#SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
 WORKDIR=${SLURM_SUBMIT_DIR}
@@ -46,7 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/dataset_creation"
-python3 create_pickled_embeddings.py
+python3 load_and_store_data_batches.py
 
 # Print idun stats
 uname -a
