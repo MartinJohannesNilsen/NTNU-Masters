@@ -119,15 +119,15 @@ if __name__ == "__main__":
     embeddings = ["glove", "fasttext", "bert"]
     
     for emb_type in embeddings:
-        print(f"Type: {emb_type}")
-
+        print(f"Type: {emb_type}, train")
         embedding_train_df = train_df.copy()
         create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}.h5", emb_type, 500)        
 
-
+        print(f"Type: {emb_type}, test")
         embedding_test_df = test_df.copy()
         create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}.h5", emb_type, 500)
 
+        print(f"Type: {emb_type}, hold out")
         embedding_hold_out_df = hold_out_df.copy()
         create_and_store_embeddings(embedding_test_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", emb_type, 500)
 
