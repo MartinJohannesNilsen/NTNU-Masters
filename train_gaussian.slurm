@@ -10,7 +10,7 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=pickle_embeddings
+#SBATCH --job-name=train_gaussian
 #SBATCH --output=out/train_gaussian.out
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
@@ -43,8 +43,8 @@ pip install -r requirements.txt --user -q
 
 # Run code
 echo "Running code"
-cd "src/dataset_creation"
-python3 train_gaussian.py
+cd "src/experiments/models/train"
+python3 train_gaussian_classifier.py
 
 # Print idun stats
 uname -a
