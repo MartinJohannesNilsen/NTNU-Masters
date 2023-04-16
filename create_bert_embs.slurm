@@ -45,8 +45,8 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/dataset_creation"
-python3 load_and_store_data_batches.py
+cd "src/experiments/features"
+python3 load_and_store_emb_batches.py
 
 # Print idun stats
 uname -a

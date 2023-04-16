@@ -16,7 +16,7 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
 
     # Get pickled dataframe with embeddings
-    data_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"DEMO_train_no_stair_twitter_{embedding_type}.pkl"
+    data_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"DEMO_train_no_stair_twitter_{embedding_type}.h5"
     df = pd.read_pickle(data_path, compression="bz2")
 
     # Train data inputs X and labels y

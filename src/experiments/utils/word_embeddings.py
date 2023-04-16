@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoModel
 from bs4 import BeautifulSoup
 import re
 from typing import List
-from transformers import pipeline
+from transformers import pipeline, logging
 
 def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, emb_dim: int) -> torch.tensor:
     """Pad if embedding is smaller then sentence length, and truncate if longer.
@@ -83,7 +83,7 @@ def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-ba
                                             Note that n_tokens will be equal to sentence_length if defined.
 
     """
-
+    logging.set_verbosity_error()
     tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
     model = AutoModel.from_pretrained(pretrained_name)
     extract_features = pipeline('feature-extraction', model=model, tokenizer=tokenizer, padding=True, truncation=True)
