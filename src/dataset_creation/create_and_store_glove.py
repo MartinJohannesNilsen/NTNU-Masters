@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from csv import QUOTE_NONE
-from load_and_store_data_batches import create_and_store_embeddings, fetch_rows_from_h5
+from load_and_store_emb_batches import create_and_store_embeddings, fetch_rows_from_h5
 import os
 
 if __name__ == "__main__":
