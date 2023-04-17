@@ -7,8 +7,11 @@ te:
 emb:
 	chmod u+x slurm_jobs/create_bert_embs.slurm slurm_jobs/create_ft_embs.slurm slurm_jobs/create_glove_embs.slurm && sbatch slurm_jobs/create_bert_embs.slurm && sbatch slurm_jobs/create_ft_embs.slurm && sbatch slurm_jobs/create_glove_embs.slurm
 
-qm:
+qj:
 	squeue -u olejlia
+
+qm:
+	squeue -u martijni
 
 q:
 	squeue
@@ -16,8 +19,11 @@ q:
 s:
 	scancel $(id)
 
-sa:
+saj:
 	scancel -u olejlia
+
+sam:
+	scancel -u martijni
 
 t:
 	tail -f -n 1 $(name).out
