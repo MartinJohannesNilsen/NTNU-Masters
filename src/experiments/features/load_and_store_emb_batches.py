@@ -86,30 +86,28 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
         store.create_dataset("label", compression="gzip", data=data["label"], chunks=True, maxshape=(None, ))
 
 
-    def resize_and_append_datasets(data, chunk_size):
+    def resize_and_append_datasets(data):
         """
         rows: Data to be stored
         chunk_size: Increment to increase size of dataset with
         Resize dim0 of dataset to fit new data
         """
-        store["idx"].resize(store["idx"].shape[0] + chunk_size, axis=0)
-        store["idx"][-chunk_size:] = data["idx"]
+        print(f"Current ds idx size: {store['idx'].shape[0]}\nCurrent rows shape: {data['idx'].shape[0]}")
+        store["idx"].resize(store["idx"].shape[0] + data["idx"].shape[0], axis=0)
+        print(f"Current ds idx size: {store['idx'].shape[0]}\nCurrent rows shape: {data['idx'].shape[0]}")
+        store["idx"][-data["idx"].shape[0]:] = data["idx"]
 
-        store["date"].resize(store["date"].shape[0] + chunk_size, axis=0)
-        store["date"][-chunk_size:] = data["date"]
+        store["date"].resize(store["date"].shape[0] + data["date"].shape[0], axis=0)
+        store["date"][-data["date"].shape[0]:] = data["date"]
 
-        store["emb_tensor"].resize(store["emb_tensor"].shape[0] + chunk_size, axis=0)
-        store["emb_tensor"][-chunk_size:] = data["embeddings"]
+        store["emb_tensor"].resize(store["emb_tensor"].shape[0] + data["embeddings"].shape[0], axis=0)
+        store["emb_tensor"][-data["embeddings"].shape[0]:] = data["embeddings"]
 
-        store["name"].resize(store["name"].shape[0] + chunk_size, axis=0)
-        store["name"][-chunk_size:] = data["name"]
+        store["name"].resize(store["name"].shape[0] + data["name"].shape[0], axis=0)
+        store["name"][-data["name"].shape[0]:] = data["name"]
 
-        store["label"].resize(store["label"].shape[0] + chunk_size, axis=0)
-        store["label"][-chunk_size:] = data["label"]
-
-
-    sentence_len = -1
-    emb_dim = 300
+        store["label"].resize(store["label"].shape[0] + data["label"].shape[0], axis=0)
+        store["label"][-data["label"].shape[0]:] = data["label"]
 
     # Setup data storage
 
@@ -119,11 +117,10 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
         data = embed_rows_as_numpy(rows)
         
         if pos == 0:
-            sentence_len = data["embeddings"][0].shape[0]
             first_time_setup_dataset(data)
 
         else:   
-            resize_and_append_datasets(data, step_size)
+            resize_and_append_datasets(data)
         
         print(f"I am on pos {pos} and emb ds has shape: {store['emb_tensor'].shape}")
         rows = []
@@ -134,15 +131,13 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
         data = embed_rows_as_numpy(rows)
 
         if pos == 0:
-            #print(rows[0][1].shape[0])
-            sentence_len = data["embeddings"][0].shape[0]
             first_time_setup_dataset(data)
 
         else:
-            resize_and_append_datasets(data, len(df.index)-pos)
+            resize_and_append_datasets(data)
         
         rows = [] # Hacky way to free up memory :)
-        print(f"I am on pos {pos} and 'data' chunk has shape: {store['emb_tensor'].shape}")
+        print(f"I am on pos {len(df.index) - pos} and 'data' chunk has shape: {store['emb_tensor'].shape}")
     
 
     store.close()
@@ -176,7 +171,7 @@ if __name__ == "__main__":
     data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test"
     out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
 
-    train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")[-10:]
+    train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")[0:602]
     test_df = pd.read_csv(data_folder / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     
@@ -184,8 +179,8 @@ if __name__ == "__main__":
     
     for emb_type in embeddings:
         print(f"Type: {emb_type}, hold_out")
-        embedding_hold_out_df = hold_out_df.copy()
-        create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", emb_type, 1)
+        embedding_hold_out_df = train_df.copy()
+        create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", emb_type, 200)
 
     for emb_type in embeddings:
         fetched_data = fetch_rows_from_h5(out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", start=0, chunk_size=5)
