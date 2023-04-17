@@ -1,3 +1,7 @@
+embs:
+	chmod u+x slurm_jobs/create_bert.slurm && chmod u+x slurm_jobs/create_ft.slurm && chmod u+x slurm_jobs/create_glove.slurm &&
+	sbatch slurm_jobs/create_bert.slurm && sbatch slurm_jobs/create_ft.slurm && sbatch slurm_jobs/create_glove.slurm
+
 tr:
 	chmod u+x slurm_jobs/train_lm.slurm && sbatch slurm_jobs/train_lm.slurm
 
