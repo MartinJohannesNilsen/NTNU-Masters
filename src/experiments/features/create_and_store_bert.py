@@ -1,13 +1,13 @@
 import pandas as pd
 from pathlib import Path
 from csv import QUOTE_NONE
-from load_and_store_emb_batches import create_and_store_embeddings, fetch_rows_from_h5
+from load_and_store_emb_batches import create_and_store_embeddings
 import os
 
 if __name__ == "__main__":
     
-    data_folder = Path(os.path.abspath(__file__)).parents[0] / "data" / "train_test"
-    out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
+    data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test"
+    out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
 
     train_df = pd.read_csv(data_folder / "train_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     test_df = pd.read_csv(data_folder / "test_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")

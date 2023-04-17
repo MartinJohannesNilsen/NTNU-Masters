@@ -9,6 +9,11 @@ from bs4 import BeautifulSoup
 import re
 from typing import List
 from transformers import pipeline, logging
+import os
+import sys
+from pathlib import Path
+
+cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"
 
 def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, emb_dim: int) -> torch.tensor:
     """Pad if embedding is smaller then sentence length, and truncate if longer.
@@ -125,7 +130,9 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
             return
 
         emb_dim = 50 if size_small else 300
-        glove_vec = GloVe(name='6B', dim=50) if emb_dim == 50 else GloVe(name='840B', dim=300)
+        name = "6B" if size_small else "840B"
+    
+        glove_vec = GloVe(name=name, dim=emb_dim, cache=cache_dir)
         res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim)
@@ -156,7 +163,7 @@ def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = No
         if len(tokenized_input) == 0:
             return
         
-        vec = FastText(language="en") # 6.6GB
+        vec = FastText(language="en", cache=cache_dir) # 6.6GB
         res = vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         emb_dim = 300

@@ -6,8 +6,8 @@ import os
 
 if __name__ == "__main__":
     
-    data_folder = Path(os.path.abspath(__file__)).parents[0] / "data" / "train_test"
-    out_path = Path(os.path.abspath(__file__)).parents[1] / "experiments" / "features" / "embeddings"
+    data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test"
+    out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
 
     train_df = pd.read_csv(data_folder / "train_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     test_df = pd.read_csv(data_folder / "test_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
