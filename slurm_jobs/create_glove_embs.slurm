@@ -45,7 +45,7 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/dataset_creation"
+cd "src/experiments/features"
 python3 create_and_store_glove.py
 
 # Print idun stats
