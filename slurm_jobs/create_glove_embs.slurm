@@ -11,7 +11,7 @@
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --job-name=create_glove_embs
-#SBATCH --output=out/create_glove_embs.out
+#SBATCH --output=out/create_glove.out
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -46,7 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/dataset_creation"
-python3 create_glove_embeddings.py
+python3 create_and_store_glove.py
 
 # Print idun stats
 uname -a

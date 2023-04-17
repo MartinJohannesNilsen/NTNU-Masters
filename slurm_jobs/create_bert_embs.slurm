@@ -10,8 +10,8 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=create_embs_hdf5
-#SBATCH --output=out/create_embs.out
+#SBATCH --job-name=create_bert_embs
+#SBATCH --output=out/create_bert.out
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -45,8 +45,8 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
-python3 load_and_store_emb_batches.py
+cd "src/dataset_creation"
+python3 create_and_store_bert.py
 
 # Print idun stats
 uname -a
