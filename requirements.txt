@@ -22,3 +22,4 @@ seaborn
 tabulate
 psutil
 tables
+h5py

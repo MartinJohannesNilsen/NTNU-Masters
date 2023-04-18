@@ -17,13 +17,13 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
 
     # Get pickled dataframe with embeddings
-    data = read_h5(str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"hold_out_sliced_stair_twitter_{embedding_type}.h5"))
-    
+    data = read_h5(str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5"))
 
-    model = SVC()
+    model = SVR()
     # Train data inputs X and labels y
-    X = np.array([element.ravel().tolist() for element in df["text"].values]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
-    y = np.array(df["label"].values)
+    X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+    # y = np.array(data["label"])
+    y = np.array([0, 1, 0, 1])
 
     def save_model(model, name = 'sklearn_model.sav'):
         # Save the model to disk
@@ -44,12 +44,13 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         for train, test in kfold.split(X, y):
             
             # Fit the model to data
-            model = SVC()
+            model = SVR()
             model.fit(X[train], y[train])
             
             # Get preds
             y_pred = model.predict(X[test])
-            metrics[f"Fold {fold_no}"] = get_metrics(y_pred, y[test])
+            preds_binary = [1 if pred > 0.5 else 0 for pred in y_pred]
+            metrics[f"Fold {fold_no}"] = get_metrics(preds_binary, y[test])
 
             fold_no += 1
 
@@ -71,9 +72,10 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         save_model(model)
 
 if __name__ == "__main__":
-    embeddings = ["glove", "fasttext", "bert"]
+    # embeddings = ["glove", "fasttext", "bert"]
+    embeddings = ["bert"]
     for emb_type in embeddings:
        print(emb_type)
-       train_embeddings(embedding_type=emb_type)
-    #    train_embeddings(embedding_type=emb_type, cross_validation_splits=5)
+    #    train_embeddings(embedding_type=emb_type)
+       train_embeddings(embedding_type=emb_type, cross_validation_splits=2)
 
