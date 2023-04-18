@@ -144,7 +144,7 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
     store.close()
 
 
-def fetch_data_from_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False) -> Union[list, dict]:
+def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False) -> Union[list, dict]:
     """Function to fetch data from h5py data store. For alleviating memory constraints with large embeddings sizes, parameters 'start' and 'chunk_size' can be utilized for fetching given range.
 
     Args:
@@ -204,5 +204,5 @@ if __name__ == "__main__":
     #     create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", emb_type, 200)
 
     for emb_type in embeddings:
-        fetched_data = fetch_data_from_h5(out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", start=0, chunk_size=5)
+        fetched_data = read_h5(out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", start=0, chunk_size=5)
         print(fetched_data)
