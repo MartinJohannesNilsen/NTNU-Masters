@@ -10,7 +10,6 @@ import re
 from typing import List
 from transformers import pipeline, logging
 import os
-import sys
 from pathlib import Path
 
 cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"

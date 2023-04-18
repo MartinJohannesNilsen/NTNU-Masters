@@ -2,6 +2,7 @@
 saved_models/
 wandb/
 out/
+embeddings/
 
 .DS_Store
 .vscode

@@ -1,9 +1,10 @@
-import pickle
+from typing import Union
 import pandas as pd
 from pathlib import Path
 from csv import QUOTE_NONE
 import os
 import sys
+import torch
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
 from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vectors, get_bert_word_embeddings
 import h5py
@@ -143,25 +144,41 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
     store.close()
 
 
-def fetch_rows_from_h5(fpath: str, start, chunk_size):
+def fetch_data_from_h5(fpath: str, col_name = None, start = None, chunk_size = None, tolist = False) -> Union[list, dict]:
     """
     Function to fetch embeddings from file with given step size. Helps alleviate memory constraints with large embeddings sizes
 
-    f: File object to fetch data from
+    fpath: File object to fetch data from
     column_names: Name of columns of dataframe to be created
     n_rows: Amount of steps to fetch
+
     """
 
     fetched_data = None
 
     with h5py.File(fpath, "r") as f:
-        fetched_data = [
-            f["idx"][start:start+chunk_size],
-            f["date"][start:start+chunk_size],
-            f["emb_tensor"][start:start+chunk_size],
-            f["name"][start:start+chunk_size],
-            f["label"][start:start+chunk_size]
-        ]
+        if col_name:
+            if col_name in ["idx", "date", "emb_tensor", "name", "label"]:
+                fetched_data = f[col_name][start:start+chunk_size if (start != None and chunk_size != None) else None:None]
+                if col_name in ["date", "name", "label"]:
+                    fetched_data = fetched_data.astype(str)
+                elif col_name == "emb_tensor":
+                    fetched_data = [torch.from_numpy(tensor) for tensor in fetched_data]
+                elif col_name == "idx":
+                    fetched_data = fetched_data.astype(int)
+            else:
+                print("Non-existent column name!")
+                sys.exit(1)
+        else:
+            fetched_data = {
+                "idx": list(f["idx"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int)),
+                "date": list(f["date"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
+                "emb_tensor": [torch.from_numpy(tensor) for tensor in (f["emb_tensor"][start:start+chunk_size] if (start != None and chunk_size != None) else f["emb_tensor"])],
+                "name": list(f["name"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
+                "label": list(f["label"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str))
+            }
+            if tolist:
+                fetched_data = list(fetched_data.values())
 
     return fetched_data
 
@@ -175,13 +192,13 @@ if __name__ == "__main__":
     test_df = pd.read_csv(data_folder / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     
-    embeddings = ["fasttext"]
+    embeddings = ["bert"]
     
-    for emb_type in embeddings:
-        print(f"Type: {emb_type}, hold_out")
-        embedding_hold_out_df = train_df.copy()
-        create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", emb_type, 200)
+    # for emb_type in embeddings:
+    #     print(f"Type: {emb_type}, hold_out")
+    #     embedding_hold_out_df = train_df.copy()
+    #     create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", emb_type, 200)
 
     for emb_type in embeddings:
-        fetched_data = fetch_rows_from_h5(out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", start=0, chunk_size=5)
-        #print(fetched_data)
+        fetched_data = fetch_data_from_h5(out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}.h5", start=0, chunk_size=5)
+        print(fetched_data)
