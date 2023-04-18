@@ -144,14 +144,18 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
     store.close()
 
 
-def fetch_data_from_h5(fpath: str, col_name = None, start = None, chunk_size = None, tolist = False) -> Union[list, dict]:
-    """
-    Function to fetch embeddings from file with given step size. Helps alleviate memory constraints with large embeddings sizes
+def fetch_data_from_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False) -> Union[list, dict]:
+    """Function to fetch data from h5py data store. For alleviating memory constraints with large embeddings sizes, parameters 'start' and 'chunk_size' can be utilized for fetching given range.
 
-    fpath: File object to fetch data from
-    column_names: Name of columns of dataframe to be created
-    n_rows: Amount of steps to fetch
+    Args:
+        fpath (str): Path to file.
+        col_name (str, optional): If defined, this is the only column which will be returned. Defaults to None.
+        start (int, optional): The start index in the defined range of rows to return. Defaults to None.
+        chunk_size (int, optional): The size of the chunk of rows to be returned. Defaults to None.
+        tolist (bool, optional): Return list instead of dictionary. Defaults to False.
 
+    Returns:
+        Union[list, dict]: Either a dictionary or a list depending on tolist parameter. Defaults to dict.
     """
 
     fetched_data = None
