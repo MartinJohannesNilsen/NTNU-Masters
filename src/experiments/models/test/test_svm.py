@@ -13,6 +13,7 @@ from experiments.features.load_and_store_emb_batches import read_h5
 def test_embeddings(embedding_type = "bert"):
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
     data_name = f"test_sliced_stair_twitter_{embedding_type}.h5"
+    # data_name = f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5"
 
     # Load the model from disk
     model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / f'{embedding_type}_embeddings'
@@ -32,5 +33,7 @@ if __name__ == "__main__":
     embedding_type = "bert" # "glove", "fasttext", "bert"
     print(embedding_type)
     y_pred, y_true = test_embeddings(embedding_type)
-    stats = get_metrics(y_pred, y_true)
+    threshold = 0.75
+    out = [1 if pred > threshold else 0 for pred in y_pred]
+    stats = get_metrics(out, y_true)
     print_metrics_comprehensive(stats)

@@ -12,8 +12,8 @@ from experiments.features.load_and_store_emb_batches import read_h5
 
 def test_embeddings(embedding_type = "bert"):
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
-    # data_name = f"test_sliced_stair_twitter_{embedding_type}.h5"
-    data_name = f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5"
+    data_name = f"test_sliced_stair_twitter_{embedding_type}.h5"
+    # data_name = f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5"
 
     # Load the model from disk
     model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'xgboost' / f'{embedding_type}_embeddings'
