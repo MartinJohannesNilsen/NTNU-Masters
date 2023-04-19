@@ -1,3 +1,6 @@
+slurm:
+	chmod u+x slurm_jobs/$(name).slurm && sbatch slurm_jobs/$(name).slurm
+
 tr:
 	chmod u+x slurm_jobs/train_lm.slurm && sbatch slurm_jobs/train_lm.slurm
 

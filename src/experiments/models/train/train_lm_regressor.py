@@ -1,8 +1,10 @@
 # Imports
+from functools import partial
 import os
 import sys
 from pathlib import Path
 from typing import List
+import click
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
@@ -19,18 +21,19 @@ def _get_dataframe(dataset: str = "all_labeled"):
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
     # Define all possible datasets
     datasets = {
-        "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
-        "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
-        "train": base_path / "train_test" / "train.csv",
-        "test": base_path / "train_test" / "test.csv",
-        "all_labeled": base_path / "all_labeled.csv",
-        "all": base_path / "all.csv",
-        "manifestos": base_path / "manifestos.csv",
-        "mypersonality": base_path / "mypersonality.csv",
-        "school_shooters": base_path / "school_shooters.csv",
-        "stair_twitter_archive": base_path / "stair_twitter_archive.csv",
-        "stream_of_consciousness": base_path / "stream_of_consciousness.csv",
-        "twitter": base_path / "twitter.csv",
+        "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
+        "test_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
+        "hold_out_test_sliced_stair_twitter": base_path / "train_test" / "hold_out_test_sliced_stair_twitter.csv",
+        # "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+        # "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
+        # "all_labeled": base_path / "all_labeled.csv",
+        # "all": base_path / "all.csv",
+        # "manifestos": base_path / "manifestos.csv",
+        # "mypersonality": base_path / "mypersonality.csv",
+        # "school_shooters": base_path / "school_shooters.csv",
+        # "stair_twitter_archive": base_path / "stair_twitter_archive.csv",
+        # "stream_of_consciousness": base_path / "stream_of_consciousness.csv",
+        # "twitter": base_path / "twitter.csv",
     }
 
     # Read csv
@@ -142,19 +145,19 @@ def train(
         trainer.eval_dataset = test_dataset
         trainer.evaluate()
 
-
-if __name__ == "__main__":
-
+click.option = partial(click.option, show_default=True)
+@click.command()
+@click.option("-m", "--model", type=click.Choice(["distilbert-base-uncased", "bert-base-uncased"]), default="distilbert-base-uncased", help="Model name")
+def main(model):
     # Parameters
     VAL_PORTION = 0.2
-    MODEL_NAME = "distilbert-base-uncased"
     MAX_LENGTH = 512
     NUM_EPOCHS = 5
-    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert")
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model)
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset="train_no_stair_twitter")
+    df = _get_dataframe(dataset="train_sliced_stair_twitter")
 
     # Set X and y
     X = df.text.values.tolist()
@@ -164,4 +167,7 @@ if __name__ == "__main__":
     # X_test = test_df.text.values.tolist()
     # y_test = test_df.label.values
 
-    train(X=X, y=y, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=MODEL_NAME, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    train(X=X, y=y, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+
+if __name__ == "__main__":
+    main()
