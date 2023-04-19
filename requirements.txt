@@ -23,3 +23,4 @@ tabulate
 psutil
 tables
 h5py
+xgboost

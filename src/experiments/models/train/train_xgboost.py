@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from sklearn.svm import SVC, SVR
+from xgboost import XGBRegressor
 import pickle   
 from sklearn.model_selection import KFold
 from tabulate import tabulate
@@ -16,11 +16,11 @@ from experiments.features.load_and_store_emb_batches import read_h5
 def train_embeddings(embedding_type = "bert", cross_validation_splits: int = None):
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
 
-    model = SVR(kernel="linear")
+    model = XGBRegressor()
 
     def save_model(model, name = 'sklearn_model.sav'):
         # Save the model to disk
-        model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / f'{embedding_type}_embeddings'
+        model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'xgboost' / f'{embedding_type}_embeddings'
         model_dir.mkdir(parents=True, exist_ok=True)
         model_path = str(model_dir / name)
         pickle.dump(model, open(model_path, 'wb'))
@@ -28,7 +28,8 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         return model_path
     
     # Get data from h5 store
-    path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"train_sliced_stair_twitter_{embedding_type}.h5")
+    # path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"train_sliced_stair_twitter_{embedding_type}.h5")
+    path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5")
     
     if cross_validation_splits:
 
@@ -81,6 +82,8 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
             # Train data inputs X and labels y
             X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
             y = np.array(data["label"])
+            print(y)
+            sys.exit(1)
 
             # Fit model
             model.fit(X, y)
@@ -90,7 +93,8 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         
 
 if __name__ == "__main__":
-    embeddings = ["glove", "fasttext", "bert"]
+    # embeddings = ["glove", "fasttext", "bert"]
+    embeddings = ["bert"]
     for emb_type in embeddings:
        print(emb_type)
        train_embeddings(embedding_type=emb_type)
