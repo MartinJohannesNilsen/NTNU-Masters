@@ -16,7 +16,7 @@ def test_embeddings(embedding_type = "bert"):
     # data_name = f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5"
 
     # Load the model from disk
-    model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / f'{embedding_type}_embeddings'
+    model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'xgboost' / f'{embedding_type}_embeddings'
     model_path = str(model_dir / 'sklearn_model.sav')
     model = pickle.load(open(model_path, 'rb'))
 

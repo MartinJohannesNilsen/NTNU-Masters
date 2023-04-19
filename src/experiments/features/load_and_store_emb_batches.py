@@ -164,22 +164,22 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
         if col_name:
             if col_name in ["idx", "date", "emb_tensor", "name", "label"]:
                 fetched_data = f[col_name][start:start+chunk_size if (start != None and chunk_size != None) else None:None]
-                if col_name in ["date", "name", "label"]:
+                if col_name in ["date", "name"]:
                     fetched_data = fetched_data.astype(str)
+                elif col_name in ["idx", "label"]:
+                    fetched_data = fetched_data.astype(int)
                 elif col_name == "emb_tensor":
                     fetched_data = [torch.from_numpy(tensor) for tensor in fetched_data]
-                elif col_name == "idx":
-                    fetched_data = fetched_data.astype(int)
             else:
                 print("Non-existent column name!")
-                sys.exit(1)
+                sys.exit(0)
         else:
             fetched_data = {
                 "idx": list(f["idx"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int)),
                 "date": list(f["date"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
                 "emb_tensor": [torch.from_numpy(tensor) for tensor in (f["emb_tensor"][start:start+chunk_size] if (start != None and chunk_size != None) else f["emb_tensor"])],
                 "name": list(f["name"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
-                "label": list(f["label"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str))
+                "label": list(f["label"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int))
             }
             if tolist:
                 fetched_data = list(fetched_data.values())

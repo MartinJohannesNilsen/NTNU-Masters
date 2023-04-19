@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from sklearn.svm import SVC, SVR
+from xgboost import XGBRegressor
 import pickle   
 from sklearn.model_selection import KFold
 from tabulate import tabulate
@@ -16,11 +16,11 @@ from experiments.features.load_and_store_emb_batches import read_h5
 def train_embeddings(embedding_type = "bert", cross_validation_splits: int = None):
     assert embedding_type in ["glove", "fasttext", "bert"], "Embedding not supported!"
 
-    model = SVR(kernel="linear")
+    model = XGBRegressor()
 
     def save_model(model, name = 'sklearn_model.sav'):
         # Save the model to disk
-        model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / f'{embedding_type}_embeddings'
+        model_dir = Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'xgboost' / f'{embedding_type}_embeddings'
         model_dir.mkdir(parents=True, exist_ok=True)
         model_path = str(model_dir / name)
         pickle.dump(model, open(model_path, 'wb'))
@@ -29,8 +29,12 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
     
     # Get data from h5 store
     path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"train_sliced_stair_twitter_{embedding_type}.h5")
+    # path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5")
     
     if cross_validation_splits:
+
+        # Read data
+        data = read_h5(path)
 
         # Train data inputs X and labels y
         X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
@@ -45,13 +49,14 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         for train, test in kfold.split(X, y):    
             
             # Fit the model to data
-            model = SVR()
+            model = XGBRegressor()
             model.fit(X[train], y[train])
             
             # Get preds
             y_pred = model.predict(X[test])
-            preds_binary = [1 if pred > 0.5 else 0 for pred in y_pred]
-            metrics[f"Fold {fold_no}"] = get_metrics(preds_binary, y[test])
+            threshold = 0.5
+            preds = [1 if pred > threshold else 0 for pred in y_pred]
+            metrics[f"Fold {fold_no}"] = get_metrics(preds, y[test])
 
             fold_no += 1
 
@@ -91,6 +96,7 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
 
 if __name__ == "__main__":
     embeddings = ["glove", "fasttext", "bert"]
+    # embeddings = ["bert"]
     for emb_type in embeddings:
        print(emb_type)
        train_embeddings(embedding_type=emb_type)
