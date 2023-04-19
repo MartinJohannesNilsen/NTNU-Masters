@@ -10,8 +10,8 @@
 #SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=train_lm_distilbert
-#SBATCH --output=out/train_lm_distilbert.out
+#SBATCH --job-name=train_distilbert
+#SBATCH --output=out/train_distilbert.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
