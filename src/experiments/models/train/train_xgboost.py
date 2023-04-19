@@ -28,8 +28,7 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
         return model_path
     
     # Get data from h5 store
-    # path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"train_sliced_stair_twitter_{embedding_type}.h5")
-    path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"hold_out_test_sliced_stair_twitter_{embedding_type}.h5")
+    path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"train_sliced_stair_twitter_{embedding_type}.h5")
     
     if cross_validation_splits:
 
@@ -82,8 +81,6 @@ def train_embeddings(embedding_type = "bert", cross_validation_splits: int = Non
             # Train data inputs X and labels y
             X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
             y = np.array(data["label"])
-            print(y)
-            sys.exit(1)
 
             # Fit model
             model.fit(X, y)
