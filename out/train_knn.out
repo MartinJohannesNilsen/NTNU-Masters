@@ -1,0 +1,37 @@
+Information
+ID: 17989606
+Name: train_knn
+Directory: /cluster/home/martijni/NTNU-Masters
+Nodes: idun-04-04
+Number of nodes: 1
+Cores: 1
+Cores per node: 1
+Number of tasks per core:
+Creating conda environment
+WARNING: A conda environment already exists at '/cluster/home/martijni/.conda/envs/env'
+Remove existing environment (y/[n])? 
+
+CondaSystemExit: Exiting.
+
+Activating conda environment
+
+CommandNotFoundError: Your shell has not been properly configured to use 'conda activate'.
+To initialize your shell, run
+
+    $ conda init <SHELL_NAME>
+
+Currently supported shells are:
+  - bash
+  - fish
+  - tcsh
+  - xonsh
+  - zsh
+  - powershell
+
+See 'conda init --help' for more information and options.
+
+IMPORTANT: You may need to close and restart your shell after running 'conda init'.
+
+
+Pip install requirements
+Running code

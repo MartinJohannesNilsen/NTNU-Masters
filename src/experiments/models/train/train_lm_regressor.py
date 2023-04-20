@@ -22,7 +22,7 @@ def _get_dataframe(dataset: str = "all_labeled"):
     # Define all possible datasets
     datasets = {
         "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
-        "test_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
+        "test_sliced_stair_twitter": base_path / "train_test" / "test_sliced_stair_twitter.csv",
         "hold_out_test_sliced_stair_twitter": base_path / "train_test" / "hold_out_test_sliced_stair_twitter.csv",
         # "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
         # "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
