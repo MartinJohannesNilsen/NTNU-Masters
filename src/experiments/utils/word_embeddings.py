@@ -11,25 +11,38 @@ from typing import List
 from transformers import pipeline, logging
 import os
 from pathlib import Path
+from math import floor
 
 cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"
 
-def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, emb_dim: int) -> torch.tensor:
+def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, emb_dim: int, pad_pos: str = "tail") -> torch.tensor:
     """Pad if embedding is smaller then sentence length, and truncate if longer.
 
     Args:
         embedding (torch.tensor): Embedding from the torch.vocab or transformers pipeline functions.
         sentence_length (int): Fixed sentence length.
         emb_dim (int): The last dimensionality value.
+        pad_pos (str): The position to apply padding, head / tail / split (head and tail split)
 
     Returns:
         torch.tensor: New tensor with fixed sentence length.
     """
-    
     if embedding.shape[0] < sentence_length:
         req_padding = sentence_length - embedding.shape[0]
         pad_tensor = torch.zeros(req_padding, emb_dim)
-        embedding = torch.cat((embedding, pad_tensor), dim=0)
+
+        if pad_pos == "head":
+            embedding = torch.cat((pad_tensor, embedding), dim=0)
+
+        elif pad_pos == "tail":
+            embedding = torch.cat((embedding, pad_tensor), dim=0)
+
+        else:
+            split_i = floor(pad_tensor.shape[0]/2)
+            embedding = torch.cat((pad_tensor[:split_i], embedding), dim=0)
+            embedding = torch.cat((embedding, pad_tensor[split_i:]), dim=0)
+            
+
     elif embedding.shape[0] > sentence_length:
         embedding = embedding[:sentence_length, :]
     return embedding
@@ -73,13 +86,14 @@ def _tokenize_with_preprocessing(text: str, remove_url: bool = True):
     return cleaned_words
 
 
-def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-base-uncased", sentence_length: int = None):
+def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-base-uncased", sentence_length: int = None, pad_pos: str = "tail"):
     """Generates BERT word embeddings, using the Transformers pipeline. NB! The batch dimension is squeezed out as default.
 
     Args:
         input (str or List[str]): Input string or list of input strings.
         pretrained_name (str, optional): Which pre-trained model to use. Defaults to 'bert-base-uncased'.
         chunk_size (int, optional): The size of chunks. Padding will be applied. Defaults to 512.
+        pad_pos (str, optional): Defines where to pad the tensor if tensor is too short. Defaults to padding at the end --> "tail"
 
     Returns:
         torch.tensor or List[torch.tensor]: If input is string, returns a tensor of dimensions (n_tokens, emb_dim=768). 
@@ -103,19 +117,20 @@ def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-ba
     # - Converts to tensor
     # - Applies fixed sentence length if defined
     if isinstance(input, str):
-        return _apply_fixed_sentence_length(torch.tensor(out).squeeze(), sentence_length=sentence_length, emb_dim=emb_dim) if sentence_length else torch.tensor(out).squeeze()
+        return _apply_fixed_sentence_length(torch.tensor(out).squeeze(), sentence_length=sentence_length, emb_dim=emb_dim, pad_pos=pad_pos) if sentence_length else torch.tensor(out).squeeze()
     else:
-        return [_apply_fixed_sentence_length(torch.tensor(e).squeeze(), sentence_length=sentence_length, emb_dim=emb_dim) for e in out] if sentence_length else [torch.tensor(e).squeeze() for e in out]
+        return [_apply_fixed_sentence_length(torch.tensor(e).squeeze(), sentence_length=sentence_length, emb_dim=emb_dim, pad_pos=pad_pos) for e in out] if sentence_length else [torch.tensor(e).squeeze() for e in out]
 
 
     
-def get_glove_word_vectors(input: str or List[str], sentence_length: int = None, size_small: bool = True):
+def get_glove_word_vectors(input: str or List[str], sentence_length: int = None, size_small: bool = True, pad_pos: str = "tail"):
     """Generates word vectors in the format of GloVe, using torch.vocab.
 
     Args:
         input (str or List[str]): Input string or list of input strings.
         size_small (bool, optional): If False, use the 2.18GB pre-trained model instead of the 862MB one. Defaults to True. Emb_dim is 50 for small, and 300 for large.
         sentence_length (int, optional): If defined, pads the list of tokens to desired length. Truncates if longer. Defaults to None.
+        pad_pos (str, optional): Defines where to pad the tensor if tensor is too short. Defaults to padding at the end --> "tail"
 
     Returns:
         torch.tensor or List[torch.tensor]: If input is string, returns a tensor of dimensions (n_tokens, emb_dim=50 or 300). 
@@ -134,7 +149,7 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
         glove_vec = GloVe(name=name, dim=emb_dim, cache=cache_dir)
         res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
-        res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim)
+        res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim, pad_pos=pad_pos)
         
         return res
 
@@ -144,12 +159,13 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
         return [_extract_embeddings(text) for text in input]
     
 
-def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = None):
+def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = None, pad_pos: str = "tail"):
     """Generates word vectors in the format of FastText, using torch.vocab.
 
     Args:
         input (str or List[str]): Input string or list of input strings.
         sentence_length (int, optional): If defined, pads the list of tokens to desired length. Truncates if longer. Defaults to None.
+        pad_pos (str, optional): Defines where to pad the tensor if tensor is too short. Defaults to padding at the end --> "tail"
 
     Returns:
         torch.tensor or List[torch.tensor]: If input is string, returns a tensor with dimensions (n_tokens, emd_dim=300). 
@@ -166,7 +182,7 @@ def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = No
         res = vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         emb_dim = 300
-        res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim)
+        res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim, pad_pos=pad_pos)
         
         return res
 
@@ -192,8 +208,13 @@ if __name__ == "__main__":
     # fasttext = get_fasttext_word_vectors(example1) # Tensor of dim (11, 300)
     
     # Test defined sentence length
-    bert = get_bert_word_embeddings(example1, sentence_length=5) # Tensor of dim (5, 768)
-    # glove = get_glove_word_vectors(example1, sentence_length=5) # Tensor of dim (5, 50)
+    # bert = get_bert_word_embeddings(example1, sentence_length=5) # Tensor of dim (5, 768)
+    glove = get_glove_word_vectors(example1, sentence_length=256, size_small=False, pad_pos="split") # Tensor of dim (5, 50)
     # fasttext = get_fasttext_word_vectors(example1, sentence_length=5) # Tensor of dim (5, 300)
 
-    print(bert.shape)
+    print(glove.shape)
+    print(glove)
+
+    for row in glove.numpy():
+        if sum(row) != 0:
+            print(row)
