@@ -17,6 +17,11 @@ def _find_field_size_limit():
         except OverflowError:
             max_int = int(max_int/10)
 
+
+def make_datetime(date):
+        y, m, d = date.split("-")
+        return datetime(int(y), int(m), int(d))
+
 if __name__ == "__main__":
     _find_field_size_limit()
 
@@ -26,9 +31,6 @@ if __name__ == "__main__":
 
     randy_twitter_df = df[df["name"] == "stair twitter archive"]
 
-    def make_datetime(date):
-        y, m, d = date.split("-")
-        return datetime(int(y), int(m), int(d))
 
 
     randy_twitter_df["date"] = randy_twitter_df["date"].map(lambda a: make_datetime(a))
