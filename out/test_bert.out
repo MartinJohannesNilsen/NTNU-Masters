@@ -1,0 +1,9 @@
+Information
+ID: 17992239
+Name: test_bert
+Directory: /cluster/home/martijni/NTNU-Masters
+Nodes: idun-90-02
+Number of nodes: 1
+Cores: 2
+Cores per node: 2
+Number of tasks per core:

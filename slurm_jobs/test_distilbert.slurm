@@ -10,8 +10,8 @@
 #SBATCH --nodes=1                          # 1 compute nodes
 #SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=test_lm
-#SBATCH --output=out/test_lm.out
+#SBATCH --job-name=test_distilbert
+#SBATCH --output=out/test_distilbert.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -44,7 +44,7 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/test"
-python3 test_lm_regressor.py
+python3 test_lm_regressor.py -m "distilbert-base-uncased"
 
 # Print idun stats
 uname -a

@@ -1,11 +1,11 @@
 Information
-ID: 17989606
-Name: train_knn
+ID: 17992238
+Name: test_distilbert
 Directory: /cluster/home/martijni/NTNU-Masters
-Nodes: idun-04-04
+Nodes: idun-90-01
 Number of nodes: 1
-Cores: 1
-Cores per node: 1
+Cores: 2
+Cores per node: 2
 Number of tasks per core:
 Creating conda environment
 WARNING: A conda environment already exists at '/cluster/home/martijni/.conda/envs/env'
@@ -34,8 +34,3 @@ IMPORTANT: You may need to close and restart your shell after running 'conda ini
 
 
 Pip install requirements
-Running code
-glove
-fasttext
-bert
-Linux idun-04-04 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
