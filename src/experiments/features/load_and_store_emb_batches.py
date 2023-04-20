@@ -10,14 +10,26 @@ from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vect
 import h5py
 import numpy as np
 
-def replace_text_with_embedding(df: pd.DataFrame, emb_type = "glove"):
+
+data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test"
+out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
+
+
+def replace_text_with_embedding(df: pd.DataFrame, emb_type: str = "glove", emb_dim: int = 300, sentence_length: int = 512):
     assert emb_type == "glove" or emb_type == "fasttext" or emb_type == "bert", "emb_type not supported!"
+
     if emb_type == "glove":
-        df["text"] = df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=512, size_small=False))
+        if emb_dim == 300:
+            df["text"] = df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=sentence_length, size_small=False))
+        else:
+            df["text"] = df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=sentence_length, size_small=True))
+
     elif emb_type == "fasttext":
-        df["text"] = df["text"].map(lambda a: get_fasttext_word_vectors(a, sentence_length=512))
+        df["text"] = df["text"].map(lambda a: get_fasttext_word_vectors(a, sentence_length=sentence_length))
+
     elif emb_type == "bert":
-        df["text"] = df["text"].map(lambda a: get_bert_word_embeddings(a, sentence_length=512))
+        df["text"] = df["text"].map(lambda a: get_bert_word_embeddings(a, sentence_length=sentence_length))
+
     else:
         return df
     
@@ -25,13 +37,15 @@ def replace_text_with_embedding(df: pd.DataFrame, emb_type = "glove"):
 
     return df
 
-def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, step_size: int = 200):
+
+def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, step_size: int = 200, emb_dim: int = 300, sentence_length: int = 512):
     """
     Function to create and store embeddings to file with given step size. Helps alleviate memory constraints with large embeddings sizes
 
     df: Dataframe containing text from shooters
     fpath: path to file, file format should be h5 (hdf5)
     step_size: Amount of rows to be processed at once
+    emb_dim: Dimension of word embeddings to be created
     """
 
     store = h5py.File(fpath, "a")
@@ -42,7 +56,7 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
     def embed_rows_as_numpy(rows):
         rows["date"] = rows["date"].map(lambda a: replace_empty(a)) # Avoid conflict with h5py. None is treated as object type. Convert None to " "
 
-        rows = replace_text_with_embedding(rows, emb_type=emb_type)
+        rows = replace_text_with_embedding(rows, emb_type=emb_type, emb_dim=emb_dim, sentence_length=sentence_length)
         rows["text"] = rows["text"].map(lambda a: a.numpy())
 
         # Converting to numpy compatible arrays so we can convert to multidim np arrays for storage
@@ -185,11 +199,96 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
 
     return fetched_data
 
+def get_dfs():
+    dfs = {
+        "train_512": pd.read_csv(data_folder / "train_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        "train_256": pd.read_csv(data_folder / "train_sliced_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        "test_512": pd.read_csv(data_folder / "test_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        "test_256": pd.read_csv(data_folder / "test_sliced_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        "hold_out_512": pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        "hold_out_256": pd.read_csv(data_folder / "shooter_hold_out_test_256.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),      
+    }
+
+    return dfs
+
+
+def create_and_store_all_embs_of_type(dfs, emb_type: str):
+    """
+    Convenience function to perform all steps of creating embs and storing them
+
+    dfs: List of dataframes to be processed
+    emb_type: Embedding type to be used
+    """
+
+    paddings = ["head", "tail", "split"]
+
+    for pad_type in paddings:
+
+        if pad_type != "tail":
+            print(f"Type: {emb_type}, train, {pad_type}")
+            embedding_train_df = dfs["train_512"].copy()
+            create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200)    
+            embedding_train_df = None    
+
+            print(f"Type: {emb_type}, test, {pad_type}")
+            embedding_test_df = dfs["test_512"].copy()
+            create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200)
+            embedding_test_df = None
+
+            print(f"Type: {emb_type}, hold out, {pad_type}")
+            embedding_hold_out_df = dfs["hold_out_512"].copy()
+            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200)
+            embedding_hold_out_df = None
+
+        if emb_type == "glove":
+            print(f"Type: {emb_type} 50, train, {pad_type}")
+            embedding_train_df = dfs["train_512"].copy()
+            create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_50_{pad_type}.h5", emb_type, 200, emb_dim=50)    
+            embedding_train_df = None    
+
+            print(f"Type: {emb_type} 50, test, {pad_type}")
+            embedding_test_df = dfs["test_512"].copy()
+            create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_50_{pad_type}.h5", emb_type, 200, emb_dim=50)
+            embedding_test_df = None
+
+            print(f"Type: {emb_type} 50, hold out, {pad_type}")
+            embedding_hold_out_df = dfs["hold_out_512"].copy()
+            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_50_{pad_type}.h5", emb_type, 200, emb_dim=50)
+            embedding_hold_out_df = None
+
+            print(f"Type: {emb_type} 50, train 256, {pad_type}")
+            embedding_train_df = dfs["train_256"].copy()
+            create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_50_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256)    
+            embedding_train_df = None
+
+            print(f"Type: {emb_type} 50, test 256, {pad_type}")
+            embedding_test_df = dfs["test_256"].copy()
+            create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_50_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256)
+            embedding_test_df = None
+
+            print(f"Type: {emb_type} 50, hold out 256, {pad_type}")
+            embedding_hold_out_df = dfs["hold_out_256"].copy()
+            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_50_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256)
+            embedding_hold_out_df = None
+
+        print(f"Type: {emb_type}, train 256, {pad_type}")
+        embedding_train_df = dfs["train_256"].copy()
+        create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256)    
+        embedding_train_df = None    
+
+        print(f"Type: {emb_type}, test 256, {pad_type}")
+        embedding_test_df = dfs["test_256"].copy()
+        create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256)
+        embedding_test_df = None
+
+        print(f"Type: {emb_type}, hold out 256, {pad_type}")
+        embedding_hold_out_df = dfs["hold_out_256"].copy()
+        create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256)
+        embedding_hold_out_df = None
+
+
 
 if __name__ == "__main__":
-    
-    data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test"
-    out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
 
     train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")[0:602]
     test_df = pd.read_csv(data_folder / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
