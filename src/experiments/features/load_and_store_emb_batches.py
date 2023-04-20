@@ -10,7 +10,6 @@ from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vect
 import h5py
 import numpy as np
 
-
 def replace_text_with_embedding(df: pd.DataFrame, emb_type = "glove"):
     assert emb_type == "glove" or emb_type == "fasttext" or emb_type == "bert", "emb_type not supported!"
     if emb_type == "glove":

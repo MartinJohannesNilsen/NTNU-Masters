@@ -28,11 +28,18 @@ if __name__ == "__main__":
     df = pd.read_csv(data_folder / "all_labeled_split_512_randy_twitter_sliced.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
     # Hold out some shooters texts for testing purposes
-    romano_df = df[df["name"] == "Jon Romano"]
-    robert_df = df[df["name"] == "Robert Butler jr"]
-    shooter_hold_out_test = pd.concat([romano_df, robert_df], ignore_index=True)
-    df = df[df["name"] != "Robert Butler jr"]
-    df = df[df["name"] != "Jon Romano"]
+    # Simplification of code
+    shooters = ["Jon Romano", "Robert Butler jr", "Michael_Slobodian"]
+    shooter_hold_out_test = df[df["name"].isin(shooters)]
+    df = df[-df["name"].isin(shooters)]
+
+    # romano_df = df[df["name"] == "Jon Romano"]
+    # robert_df = df[df["name"] == "Robert Butler jr"]
+    # slobodian_df = df[df["name"] == "Michael_Slobodian"]
+    # shooter_hold_out_test = pd.concat([romano_df, robert_df, slobodian_df], ignore_index=True)
+    # df = df[df["name"] != "Robert Butler jr"]
+    # df = df[df["name"] != "Jon Romano"]
+    # df = df[df["name"] != "Michael_Slobodian"]
 
     # Divide into train and test, balanced 80% train of school shooters and not school shooters
     train_ratio = 0.8
