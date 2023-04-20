@@ -115,7 +115,7 @@ def main(model, checkpoint, max_len):
     elif (method == "test"):
         texts = df.text.values
         labels = df.label.values
-        thresholds = [0.7, 0.71, 0.72, 0.73, 0.74, 0.75]
+        thresholds = [0.65, 0.675, 0.7, 0.725, 0.75]
         test(texts, labels, checkpoint=checkpoint, thresholds=thresholds, model_name = model, max_length = max_len)
 
         
