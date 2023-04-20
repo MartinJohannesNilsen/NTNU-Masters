@@ -1,8 +1,8 @@
 Information
-ID: 17992238
+ID: 17993597
 Name: test_distilbert
 Directory: /cluster/home/martijni/NTNU-Masters
-Nodes: idun-90-01
+Nodes: idun-90-02
 Number of nodes: 1
 Cores: 2
 Cores per node: 2
@@ -36,160 +36,67 @@ IMPORTANT: You may need to close and restart your shell after running 'conda ini
 Pip install requirements
 Running code
 
-Threshold = 0.7
+Threshold = 0.55
 ----- Performance metrics -----
 
 Confusion matrix
 "The number of True Positives, True Negatives, False Positives and False Negatives."
-TP: 552 | TN: 3567 | FP: 31 | FN: 110
+TP: 612 | TN: 3444 | FP: 154 | FN: 50
 
 Accuracy ((TP + TN) / (TP + FP + FN + TN))
 "The percentage of all classifications which is true."
-96.69%
+95.211%
 
 Precision (TP / (TP + FP))
 "The percentage of classified positives which is true."
-95.846%
+89.232%
 
 Recall (TP / (TP + FN))
 "Out of all the actual positives, how many did we correctly classify?"
-91.261%
+94.083%
 
 Specificity (TN / (TN + FP))
 "Out of all the actual negatives, how many did we correctly classify?"
-99.138%
+95.72%
 
 F1-Score (2 * (precicion * recall) / (precision + recall))
 "The harmonic mean/weighted average of precision and recall."
-93.368%
+91.419%
 
 AUC (Area under ROC curve, ROC-AUC)
 "Tells us about the capability of model in distinguishing the classes"
-91.261%
+94.083%
 
-Threshold = 0.71
+Threshold = 0.6
 ----- Performance metrics -----
 
 Confusion matrix
 "The number of True Positives, True Negatives, False Positives and False Negatives."
-TP: 541 | TN: 3574 | FP: 24 | FN: 121
+TP: 591 | TN: 3496 | FP: 102 | FN: 71
 
 Accuracy ((TP + TN) / (TP + FP + FN + TN))
 "The percentage of all classifications which is true."
-96.596%
+95.939%
 
 Precision (TP / (TP + FP))
 "The percentage of classified positives which is true."
-96.239%
+91.645%
 
 Recall (TP / (TP + FN))
 "Out of all the actual positives, how many did we correctly classify?"
-90.528%
+93.22%
 
 Specificity (TN / (TN + FP))
 "Out of all the actual negatives, how many did we correctly classify?"
-99.333%
+97.165%
 
 F1-Score (2 * (precicion * recall) / (precision + recall))
 "The harmonic mean/weighted average of precision and recall."
-93.097%
+92.409%
 
 AUC (Area under ROC curve, ROC-AUC)
 "Tells us about the capability of model in distinguishing the classes"
-90.528%
-
-Threshold = 0.72
------ Performance metrics -----
-
-Confusion matrix
-"The number of True Positives, True Negatives, False Positives and False Negatives."
-TP: 522 | TN: 3580 | FP: 18 | FN: 140
-
-Accuracy ((TP + TN) / (TP + FP + FN + TN))
-"The percentage of all classifications which is true."
-96.291%
-
-Precision (TP / (TP + FP))
-"The percentage of classified positives which is true."
-96.452%
-
-Recall (TP / (TP + FN))
-"Out of all the actual positives, how many did we correctly classify?"
-89.176%
-
-Specificity (TN / (TN + FP))
-"Out of all the actual negatives, how many did we correctly classify?"
-99.5%
-
-F1-Score (2 * (precicion * recall) / (precision + recall))
-"The harmonic mean/weighted average of precision and recall."
-92.348%
-
-AUC (Area under ROC curve, ROC-AUC)
-"Tells us about the capability of model in distinguishing the classes"
-89.176%
-
-Threshold = 0.73
------ Performance metrics -----
-
-Confusion matrix
-"The number of True Positives, True Negatives, False Positives and False Negatives."
-TP: 397 | TN: 3586 | FP: 12 | FN: 265
-
-Accuracy ((TP + TN) / (TP + FP + FN + TN))
-"The percentage of all classifications which is true."
-93.498%
-
-Precision (TP / (TP + FP))
-"The percentage of classified positives which is true."
-95.092%
-
-Recall (TP / (TP + FN))
-"Out of all the actual positives, how many did we correctly classify?"
-79.818%
-
-Specificity (TN / (TN + FP))
-"Out of all the actual negatives, how many did we correctly classify?"
-99.666%
-
-F1-Score (2 * (precicion * recall) / (precision + recall))
-"The harmonic mean/weighted average of precision and recall."
-85.209%
-
-AUC (Area under ROC curve, ROC-AUC)
-"Tells us about the capability of model in distinguishing the classes"
-79.818%
-
-Threshold = 0.74
------ Performance metrics -----
-
-Confusion matrix
-"The number of True Positives, True Negatives, False Positives and False Negatives."
-TP: 62 | TN: 3592 | FP: 6 | FN: 600
-
-Accuracy ((TP + TN) / (TP + FP + FN + TN))
-"The percentage of all classifications which is true."
-85.775%
-
-Precision (TP / (TP + FP))
-"The percentage of classified positives which is true."
-88.432%
-
-Recall (TP / (TP + FN))
-"Out of all the actual positives, how many did we correctly classify?"
-54.599%
-
-Specificity (TN / (TN + FP))
-"Out of all the actual negatives, how many did we correctly classify?"
-99.833%
-
-F1-Score (2 * (precicion * recall) / (precision + recall))
-"The harmonic mean/weighted average of precision and recall."
-54.604%
-
-AUC (Area under ROC curve, ROC-AUC)
-"Tells us about the capability of model in distinguishing the classes"
-54.599%
+93.22%
 
 Threshold = 0.75
 ----- Performance metrics -----
@@ -221,4 +128,4 @@ F1-Score (2 * (precicion * recall) / (precision + recall))
 AUC (Area under ROC curve, ROC-AUC)
 "Tells us about the capability of model in distinguishing the classes"
 50.453%
-Linux idun-90-01 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
+Linux idun-90-02 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
