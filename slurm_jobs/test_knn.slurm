@@ -10,8 +10,8 @@
 #SBATCH --nodes=1                          # 1 compute nodes
 #SBATCH --ntasks-per-node=1                # 1 task per compute node
 #SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=test_naive_bayes
-#SBATCH --output=out/test_naive_bayes.out
+#SBATCH --job-name=test_knn
+#SBATCH --output=out/test_knn.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -46,9 +46,9 @@ echo "Running code"
 cd "src/experiments/models/test"
 
 # One for each embedding
-python3 test_sklearn.py -m "naive_bayes" -e "bert"
-python3 test_sklearn.py -m "naive_bayes" -e "glove"
-python3 test_sklearn.py -m "naive_bayes" -e "fasttext"
+python3 test_sklearn.py -m "knn" -e "bert"
+python3 test_sklearn.py -m "knn" -e "glove"
+python3 test_sklearn.py -m "knn" -e "fasttext"
 
 # Print idun stats
 uname -a

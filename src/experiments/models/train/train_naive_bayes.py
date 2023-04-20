@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import numpy as np
-import pandas as pd
 from sklearn.naive_bayes import GaussianNB
 import pickle   
 from sklearn.model_selection import KFold

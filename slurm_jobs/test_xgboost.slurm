@@ -44,7 +44,11 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/test"
-python3 test_xgboost.py
+
+# One for each embedding
+python3 test_sklearn.py -m "xgboost" -e "bert"
+python3 test_sklearn.py -m "xgboost" -e "glove"
+python3 test_sklearn.py -m "xgboost" -e "fasttext"
 
 # Print idun stats
 uname -a
