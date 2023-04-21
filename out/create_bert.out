@@ -1,8 +1,8 @@
 Information
-ID: 18009700
+ID: 18009792
 Name: create_bert_embs
 Directory: /cluster/home/olejlia/NTNU-Masters
-Nodes: idun-03-53
+Nodes: idun-03-55
 Number of nodes: 1
 Cores: 1
 Cores per node: 1
@@ -41,3 +41,5 @@ Install nltk stopwords
 [nltk_data]     /cluster/home/olejlia/nltk_data...
 [nltk_data]   Package stopwords is already up-to-date!
 Running code
+slurmstepd: error: *** JOB 18009700 ON idun-03-53 CANCELLED AT 2023-04-21T14:06:16 ***
+slurmstepd: error: *** JOB 18009792 ON idun-03-55 CANCELLED AT 2023-04-21T14:06:16 ***
