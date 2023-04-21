@@ -227,21 +227,20 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
 
     for pad_type in paddings:
 
-        if pad_type != "tail":
-            print(f"Type: {emb_type}, train, {pad_type}")
-            embedding_train_df = dfs["train_512"].copy()
-            create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)    
-            embedding_train_df = None    
+        print(f"Type: {emb_type}, train, {pad_type}")
+        embedding_train_df = dfs["train_512"].copy()
+        create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)    
+        embedding_train_df = None    
 
-            print(f"Type: {emb_type}, test, {pad_type}")
-            embedding_test_df = dfs["test_512"].copy()
-            create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)
-            embedding_test_df = None
+        print(f"Type: {emb_type}, test, {pad_type}")
+        embedding_test_df = dfs["test_512"].copy()
+        create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)
+        embedding_test_df = None
 
-            print(f"Type: {emb_type}, hold out, {pad_type}")
-            embedding_hold_out_df = dfs["hold_out_512"].copy()
-            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)
-            embedding_hold_out_df = None
+        print(f"Type: {emb_type}, hold out, {pad_type}")
+        embedding_hold_out_df = dfs["hold_out_512"].copy()
+        create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)
+        embedding_hold_out_df = None
 
         print(f"Type: {emb_type}, train 256, {pad_type}")
         embedding_train_df = dfs["train_256"].copy()
