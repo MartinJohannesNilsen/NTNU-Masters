@@ -122,8 +122,16 @@ def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-ba
         return [_apply_fixed_sentence_length(torch.tensor(e).squeeze(), sentence_length=sentence_length, emb_dim=emb_dim, pad_pos=pad_pos) for e in out] if sentence_length else [torch.tensor(e).squeeze() for e in out]
 
 
+def get_glove_model(size_small: bool = True):
+    emb_dim = 50 if size_small else 300
+    name = "6B" if size_small else "840B"
+
+    glove_vec = GloVe(name=name, dim=emb_dim, cache=cache_dir)
+
+    return glove_vec
     
-def get_glove_word_vectors(input: str or List[str], sentence_length: int = None, size_small: bool = True, pad_pos: str = "tail"):
+
+def get_glove_word_vectors(input: str or List[str], emb_model = None, sentence_length: int = None, emb_dim: int = 300, pad_pos: str = "tail"):
     """Generates word vectors in the format of GloVe, using torch.vocab.
 
     Args:
@@ -143,11 +151,7 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
         if len(tokenized_input) == 0:
             return
 
-        emb_dim = 50 if size_small else 300
-        name = "6B" if size_small else "840B"
-    
-        glove_vec = GloVe(name=name, dim=emb_dim, cache=cache_dir)
-        res = glove_vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
+        res = emb_model.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         res = _apply_fixed_sentence_length(res, sentence_length=sentence_length, emb_dim=emb_dim, pad_pos=pad_pos)
         
@@ -157,9 +161,13 @@ def get_glove_word_vectors(input: str or List[str], sentence_length: int = None,
         return _extract_embeddings(input)
     else:
         return [_extract_embeddings(text) for text in input]
-    
 
-def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = None, pad_pos: str = "tail"):
+
+def get_ft_model():
+    return FastText(language="en", cache=cache_dir) # 6.6GB
+
+
+def get_fasttext_word_vectors(input: str or List[str], emb_model = None, sentence_length: int = None, pad_pos: str = "tail"):
     """Generates word vectors in the format of FastText, using torch.vocab.
 
     Args:
@@ -178,7 +186,7 @@ def get_fasttext_word_vectors(input: str or List[str], sentence_length: int = No
         if len(tokenized_input) == 0:
             return
         
-        vec = FastText(language="en", cache=cache_dir) # 6.6GB
+        vec = emb_model # 6.6GB
         res = vec.get_vecs_by_tokens(tokenized_input, lower_case_backup=True)
         
         emb_dim = 300
