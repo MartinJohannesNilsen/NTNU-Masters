@@ -257,7 +257,10 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
         create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)
         embedding_hold_out_df = None
 
-        if emb_type == "glove":
+
+    if emb_type == "glove":
+        for pad_type in paddings:
+
             emb_model = get_glove_model()
 
             print(f"Type: {emb_type} 50, train, {pad_type}")
@@ -289,7 +292,6 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
             embedding_hold_out_df = dfs["hold_out_256"].copy()
             create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_50_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256, emb_model=emb_model)
             embedding_hold_out_df = None
-
 
 
 if __name__ == "__main__":
