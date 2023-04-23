@@ -47,7 +47,7 @@ class TextDataset(Dataset):
 
 
 class TextClassifier(nn.Module):
-    def __init__(self, batch_size: int, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], num_classes: int = 2, dropout: int = 0.5):
+    def __init__(self, batch_size: int, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
         super(TextClassifier, self).__init__()
         """ self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), padding=(1,1))
         self.relu1 = nn.ReLU()
@@ -67,8 +67,9 @@ class TextClassifier(nn.Module):
             for i in range(len(filter_sizes))
         ])
 
-        self.fc = nn.Linear(np.sum(num_filters), num_classes)
+        self.fc = nn.Linear(np.sum(num_filters), 1)
         self.dropout = nn.Dropout(p=dropout)
+        self.sig = nn.Sigmoid() # Sigmoid to squeeze final vals between 0 and 1 to accomodate for binary class prob
 
     def forward(self, x):
         """ x = self.conv1(x)
@@ -112,14 +113,17 @@ class TextClassifier(nn.Module):
         x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
                          dim=1)
         
-        print(x_fc.size())
+        #print(f"Size after squeeze and flatten: {x_fc.size()}")
 
         # Compute logits. Output shape: (b, n_classes)
-        logits = self.fc(self.dropout(x_fc))
+        out = self.fc(self.dropout(x_fc))
 
-        print(logits)
+        #print(f"output after dropout={0.5} and fc layer: {out}")
 
-        return logits
+        # Squeeze between class 0 and 1 (non-shooter and shooter)
+        out = self.sig(out)
+
+        return out
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(0)
@@ -130,7 +134,7 @@ def train():
     base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
 
     train_path = base_path / "test_sliced_stair_twitter_glove_50_tail_256.h5"
-    val_path = base_path / "hold_out_test_sliced_stair_twitter_glove_tail.h5"
+    val_path = base_path / "hold_out_test_sliced_stair_twitter_glove_50_tail_256.h5"
 
 
     # Creating datasets for use with dataloaders
@@ -142,7 +146,7 @@ def train():
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create model
-    model = TextClassifier(batch_size=1).to(device)
+    model = TextClassifier(batch_size=1, emb_dim=50).to(device)
 
     # Create loss function and optimizer
     loss_fn = nn.BCELoss()
@@ -158,11 +162,11 @@ def train():
             labels = labels.to(torch.float32)
             inputs = inputs.to(device)
             labels = labels.to(device)
-            print(f"Shape of input tensor: {inputs.shape}")
+            #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
 
             outputs = model(inputs)
-            loss = loss_fn(outputs, labels.to(torch.float32))
+            loss = loss_fn(outputs, labels.to(torch.float32).unsqueeze(1)) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
 
             optimizer.step()
@@ -183,7 +187,7 @@ def train():
     best_vloss = 1_000_000.
 
     
-    """ wandb.init(
+    wandb.init(
         # set the wandb project where this run will be logged
         project="cnn-glove-features-predict-shooters",
         
@@ -194,7 +198,7 @@ def train():
         "dataset": "school-shooters-vs-non-school-shooters",
         "epochs": 10,
         }
-    ) """
+    )
    
 
     for epoch in range(EPOCHS):
