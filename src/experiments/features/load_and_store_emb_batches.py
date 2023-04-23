@@ -259,9 +259,9 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
 
 
     if emb_type == "glove":
-        for pad_type in paddings:
+        emb_model = get_glove_model()
 
-            emb_model = get_glove_model()
+        for pad_type in paddings:
 
             print(f"Type: {emb_type} 50, train, {pad_type}")
             embedding_train_df = dfs["train_512"].copy()
