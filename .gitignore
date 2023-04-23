@@ -1,7 +1,7 @@
 # Project specific
 saved_models/
 wandb/
-# out/
+out/
 embeddings/
 
 .DS_Store
