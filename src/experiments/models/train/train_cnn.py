@@ -1,25 +1,24 @@
 import sys 
 import os
 from pathlib import Path
-import pandas as pd
 import torch
-from csv import QUOTE_NONE
 import sys
 import csv
 # sys.exit(1)
+sys.path.append(str(Path(os.path.abspath(__file__)).parents[3]))
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
 # src/experiments/utils
-from utils.word_embeddings import preprocess_text, get_glove_word_vectors
-from sklearn.model_selection import train_test_split 
 from torch.utils.data import DataLoader, Dataset
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from datetime import datetime
 import wandb
-import random
-from typing import Type
 device = "cuda" if torch.cuda.is_available() else "cpu"
+import h5py
+import numpy as np
+from experiments.utils.metrics import get_metrics
+import tabulate
 
 # Maxsize of csv field size
 def _find_field_size_limit():
@@ -34,114 +33,133 @@ def _find_field_size_limit():
 
 
 class TextDataset(Dataset):
-    def __init__(self, embeddings, labels, train=False):
-        self.embeddings = embeddings
-        self.labels = labels
+    def __init__(self, data_path):
+        self.data_path = data_path
+        self.file = h5py.File(self.data_path, "r")
+        self.data_len = self.file["idx"].shape[0]
+        #print(f"Data length: {self.data_len}")
+
 
     def __len__(self):
-        if len(self.labels) == len(self.embeddings):
-            return len(self.labels)
-        else:
-            return -1
+        return self.data_len
+
 
     def __getitem__(self, idx):
-        return self.embeddings[idx], self.labels[idx]
+        features = torch.from_numpy(self.file["emb_tensor"][idx])
+        labels = self.file["label"][idx]
+
+        return features, labels
+    
+
+    def get_class_weights(self):
+        labels = self.file["label"]
+
+        total_texts = labels.shape[0]
+        num_shooter_texts = sum(labels)
+        num_non_shooter_texts = total_texts - num_shooter_texts
+
+        non_shooter_wt = total_texts / num_non_shooter_texts
+        shooter_wt = total_texts / num_shooter_texts
+
+        print(f"non_shooter: {non_shooter_wt}\nshooter: {shooter_wt}")
+
+        return [non_shooter_wt, shooter_wt]
+
+
+
 
 
 class TextClassifier(nn.Module):
-    def __init__(self):
+    def __init__(self, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
         super(TextClassifier, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), padding=(1,1))
-        self.relu1 = nn.ReLU()
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), padding=(1, 1))
-        self.relu2 = nn.ReLU()
-        self.pool2 = nn.MaxPool2d(kernel_size=(2, 2))
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=1, kernel_size=(3, 3), padding=(1, 1))
-        self.pool3 = nn.MaxPool2d(kernel_size=(2, 2))
-        self.flat = nn.Flatten()
-        self.fc3 = nn.Linear(2664, 1)
-        self.sig = nn.Sigmoid()
+
+        self.conv1d_list = nn.ModuleList([
+            nn.Conv1d(in_channels=emb_dim,
+                      out_channels=num_filters[i],
+                      kernel_size=filter_sizes[i])
+            for i in range(len(filter_sizes))
+        ])
+
+        #self.lstm = nn.LSTM(sentence_len, batch_size, )
+
+        self.fc = nn.Linear(np.sum(num_filters), 1)
+        self.dropout = nn.Dropout(p=dropout)
+        self.sig = nn.Sigmoid() # Sigmoid to squeeze final vals between 0 and 1 to accomodate for binary class prob
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.relu1(x)
-        x = self.conv2(x)
-        x = self.relu2(x)
-        x = self.pool2(x)
-        x = self.conv3(x)
-        x = self.pool3(x)
-        x = self.flat(x)
-        x = self.fc3(x)
-        x = self.sig(x)
+        """Perform a forward pass through the network.
 
-        return x[0]
+        Args:
+            input_ids (torch.Tensor): A tensor of token ids with shape
+                (batch_size, max_sent_length)
 
+        Returns:
+            logits (torch.Tensor): Output logits with shape (batch_size,
+                n_classes)
+        """
 
-def train():
+        # Input shape: (b, max_len, embed_dim)
+
+        # Permute `x_embed` to match input shape requirement of `nn.Conv1d`.
+        # Output shape: (b, embed_dim, max_len)
+        x_reshaped = x.permute(0, 2, 1)
+        #print(f"size: {x_reshaped.size()}")
+
+        # Apply CNN and ReLU. Output shape: (b, num_filters[i], L_out)
+        x_conv_list = [F.relu(conv1d(x_reshaped)) for conv1d in self.conv1d_list]
+
+        # Max pooling. Output shape: (b, num_filters[i], 1)
+        x_pool_list = [F.max_pool1d(x_conv, kernel_size=x_conv.shape[2])
+            for x_conv in x_conv_list]
+        
+        # Concatenate x_pool_list to feed the fully connected layer.
+        # Output shape: (b, sum(num_filters))
+        x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
+                         dim=1)
+        
+        #print(f"Size after squeeze and flatten: {x_fc.size()}")
+
+        # Compute logits. Output shape: (b, n_classes)
+        out = self.fc(self.dropout(x_fc))
+
+        #print(f"output after dropout={0.5} and fc layer: {out}")
+
+        # Squeeze between class 0 and 1 (non-shooter and shooter)
+        out = self.sig(out)
+
+        return out
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(0)
+
+def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sentence_length: int = 256, embedding_dim: int = 300):
+    # 222
 
     # Read data
-    base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
-    datasets = {
-        "school_shooters": base_path / "school_shooters.csv",
-        "manifestos": base_path / "manifestos.csv",
-        "stair_twitter_archive": base_path / "stair_twitter_archive.csv",
-        "twitter": base_path / "twitter.csv",
-        "stream_of_consciousness": base_path / "stream_of_consciousness.csv"
-    }
-    schoolshootersinfo_df = pd.read_csv(datasets["school_shooters"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
-    stair_twitter_archive_df = pd.read_csv(datasets["stair_twitter_archive"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
-    twitter_df = pd.read_csv(datasets["twitter"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
-    stream_of_consciousness_df = pd.read_csv(datasets["stream_of_consciousness"], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
+    base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
 
-    # Set label of school shooter or not
-    # 0 = NOT school shooter
-    # 1 = school shooter
-    schoolshootersinfo_df["label"] = 1
-    stair_twitter_archive_df["label"] = 1
-    twitter_df["label"] = 0
-    stream_of_consciousness_df["label"] = 0
+    emb_str = f"{embedding_type}" if embedding_dim == 300 else f"{embedding_type}_{embedding_dim}"
+    sent_len_str = "" if sentence_length == 512 else f"_{sentence_length}"
 
-    # Create shooter vs non-shooter dfs
-    shooter_df = pd.concat([schoolshootersinfo_df[:100], stair_twitter_archive_df[:100]], ignore_index=True)
-    non_shooter_df = pd.concat([twitter_df[:100], stream_of_consciousness_df[:100]], ignore_index=True)
-    whole_corpus_df = pd.concat([shooter_df, non_shooter_df], ignore_index=True).sample(frac=1)
 
-    # Preprocess text into tokens
-    whole_corpus_df["text"] = whole_corpus_df["text"].map(lambda a: preprocess_text(a))
-
-    # In some cases the text is entirely removed by preprocessing. 
-    # Drop rows where this is the case
-    whole_corpus_df = whole_corpus_df[whole_corpus_df["text"].map(len) > 0]
-
-    sentence_lengths = [len(t) for t in whole_corpus_df["text"]]
-    max_len = max(sentence_lengths)
-
-    # Find max sentence length and send to embeddings method
-    # This will return all sentences converted to a matrix of glove word embeddings
-    # Each sentence is padded to the same length as max_len to facilitate use in the neural net
-    whole_corpus_df["text"] = whole_corpus_df["text"].map(lambda a: get_glove_word_vectors(a, sentence_length=max_len))
-
-    # Pickle
-    # print(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")
-    # whole_corpus_df.to_pickle(Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "all_data_glove_emb.pkl")
-
-    x_train, x_test, y_train, y_test = train_test_split(whole_corpus_df["text"], whole_corpus_df["label"], test_size=0.2)
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
+    train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
+    val_path = base_path / f"test_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
 
     # Creating datasets for use with dataloaders
-    train_set = TextDataset(x_train.to_numpy(), y_train.to_numpy())
-    val_set = TextDataset(x_val.to_numpy(), y_val.to_numpy())
+    train_set = TextDataset(train_path)
+    val_set = TextDataset(val_path)
 
     # Load dataset
-    train_loader = DataLoader(train_set, batch_size=1, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=1, shuffle=False)
+    train_loader = DataLoader(train_set, batch_size=222, shuffle=False, pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create model
-    model = TextClassifier().to(device)
+    model = TextClassifier(emb_dim=embedding_dim).to(device)
 
     # Create loss function and optimizer
-    loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
 
     # Run epoch of 
     def run_epoch():
@@ -153,10 +171,22 @@ def train():
             labels = labels.to(torch.float32)
             inputs = inputs.to(device)
             labels = labels.to(device)
+            #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
 
             outputs = model(inputs)
-            loss = loss_fn(outputs, labels.to(torch.float32))
+            #print(f"out: {outputs}")
+
+            weighting = []
+            for l in labels:
+                if l == 0:
+                    weighting.append(class_wts[0])
+                else:
+                    weighting.append(class_wts[1])
+
+            loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
+
+            loss = loss_fn(outputs.squeeze(), labels.to(torch.float32)) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
 
             optimizer.step()
@@ -173,11 +203,11 @@ def train():
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     epoch_number = 0
-    EPOCHS = 10
+    EPOCHS = num_epochs
     best_vloss = 1_000_000.
 
     
-    wandb.init(
+    """ wandb.init(
         # set the wandb project where this run will be logged
         project="cnn-glove-features-predict-shooters",
         
@@ -188,8 +218,9 @@ def train():
         "dataset": "school-shooters-vs-non-school-shooters",
         "epochs": 10,
         }
-    )
+    ) """
    
+    metrics = {}
 
     for epoch in range(EPOCHS):
         print(f'EPOCH {epoch + 1}:')
@@ -201,12 +232,32 @@ def train():
         # We don't need gradients on to do reporting
         model.train(False)
 
+        pred_vlabels = []
+        true_vlabels = []
+
         running_vloss = 0.0
         for i, vdata in enumerate(val_loader):
             vinputs, vlabels = vdata
             voutputs = model(vinputs)
-            vloss = loss_fn(voutputs, vlabels.to(torch.float32))
+
+            [true_vlabels.append(l) for l in vlabels]
+            [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+            
+            weighting = []
+            for vl in vlabels:
+                if vl == 0:
+                    weighting.append(class_wts[0])
+                else:
+                    weighting.append(class_wts[1])
+
+            loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
+            vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
             running_vloss += vloss
+
+        metrics[epoch] = get_metrics(pred_vlabels, true_vlabels)
+        print(metrics[epoch])
+
+        
 
         avg_vloss = running_vloss / (i + 1)
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
@@ -222,8 +273,22 @@ def train():
             model_path = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "cnn" / "glove_encodings" / f"model_{timestamp}_{epoch_number}")
             torch.save(model.state_dict(), model_path)
 
-    wandb.finish()
+    all = []
+    for k, v in metrics.items():
+        out = [k]
+        for metric in v.values():
+            out.append(round(metric, 3)) if metric else out.append(None)
+        all.append(out)
+
+    print(f"RESULTS FOR TRAINING CNN WITH:\nemb type: {embedding_type}\nemb dim: {embedding_dim}\nsentence length: {sentence_length}\npadding pos: {pad_pos}\nbatch size: {222}\n\n\n")
+
+    print(tabulate(all, headers=["Fold", "TN", "FP", "FN", "TP", "Accuracy", "Precision", "Recall", "Specificity", "F1-score", "ROC-AUC"]))
+
+    train_set.file.close()
+    val_set.file.close()
+    #wandb.finish()
 
 if __name__ == "__main__":
     _find_field_size_limit()
-    train()
+    train(embedding_type="glove", pad_pos="head", num_epochs=10, sentence_length=256, embedding_dim=300)
+
