@@ -15,7 +15,7 @@ from experiments.features.load_and_store_emb_batches import read_h5
 
 
 # Training utitilites
-def _get_svm_model():
+def _get_model():
     return SVR()
 
 def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
@@ -31,7 +31,7 @@ def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
 def training(saved_model_dir, path, batch_size = None, cross_validation_splits: int = None):
 
     # Get model
-    model = _get_svm_model()
+    model = _get_model()
     
     # Run cross_val if number of splits is defined
     if cross_validation_splits:
@@ -53,7 +53,7 @@ def training(saved_model_dir, path, batch_size = None, cross_validation_splits: 
         for train, test in kfold.split(X, y):    
             
             # Fit the model to data
-            model = _get_svm_model()
+            model = _get_model()
             model.fit(X[train], y[train])
             
             # Get preds
