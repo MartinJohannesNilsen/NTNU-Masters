@@ -110,7 +110,7 @@ def training(saved_model_dir, path, batch_size = None, cross_validation_splits: 
         
 
 # Helper functions for feature based training
-SUPPORTED_EMBEDDINGS = ["glove", "fasttext", "bert"]
+SUPPORTED_EMBEDDINGS = ["glove", "glove_50", "fasttext", "bert"]
 def _embedding(path, emb_type = "glove", batch_size = None, cross_validation_splits: int = None):
     assert emb_type in SUPPORTED_EMBEDDINGS, "Embedding type not supported!"
     training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / 'embeddings' / emb_type / Path(path).stem, path=path, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
@@ -118,7 +118,7 @@ def _embedding(path, emb_type = "glove", batch_size = None, cross_validation_spl
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
 def _liwc(path, liwc_dict = "2022", batch_size = None, cross_validation_splits: int = None):
     assert liwc_dict in SUPPORTED_LIWC_DICTS, "LIWC dictionary version not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / 'LIWC' / f'{liwc_dict}' / Path(path).stem, path=path, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / 'liwc' / f'{liwc_dict}' / Path(path).stem, path=path, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
 
 
 # Training based on selected feature
@@ -130,25 +130,17 @@ def train_embeddings(path: str, emb:str = "glove", cross_val_splits = None):
         _embedding(emb_type=emb, path=path, batch_size=32)
 
 
-def train_liwc(path: str, liwc_dict:str = None, cross_val_splits = None):
-    if liwc_dict:
-        path = path.replace("$LIWCDICT", liwc_dict)
-        if cross_val_splits:
-            _liwc(path=path, liwc_dict=liwc_dict, cross_validation_splits=cross_val_splits)
-        else:
-            _liwc(path=path, liwc_dict=liwc_dict)
+def train_liwc(path: str, liwc_dict:str = "2022", cross_val_splits = None):
+    assert liwc_dict in SUPPORTED_LIWC_DICTS, "Liwc dictionary not supported!"
+    if cross_val_splits:
+        _liwc(path=path, liwc_dict=liwc_dict, cross_validation_splits=cross_val_splits)
     else:
-        for liwc in SUPPORTED_LIWC_DICTS:
-            path = path.replace("$LIWCDICT", liwc)
-            if cross_val_splits:
-                _liwc(path=path, liwc_dict=liwc, cross_validation_splits=cross_val_splits)
-            else:
-                _liwc(path=path, liwc_dict=liwc)
+        _liwc(path=path, liwc_dict=liwc_dict)
 
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.argument("path", help="Path to h5")
+@click.argument("path", nargs=1)
 def main(path):
 
     # Check that path leads to file
@@ -165,16 +157,22 @@ def main(path):
             emb_type = "fasttext"
         elif "bert" in path:
             emb_type = "bert"
+        assert emb_type, "Incorrect format, could not find embedding!"
         train_embeddings(path, emb_type)
         
     elif "LIWC" in path:
-        train_liwc(path)
+        # Find liwc_dict
+        liwc_dict = None
+        if "2022" in path:
+            liwc_dict = "2022"
+        elif "2015" in path:
+            liwc_dict = "2015"
+        elif "2007" in path:
+            liwc_dict = "2007"
+        elif "2001" in path:
+            liwc_dict = "2001"
+        assert liwc_dict, "Incorrect format, could not find LIWC dict!"
+        train_liwc(path, liwc_dict)
 
 if __name__ == "__main__":
     main()
-
-    # python 
-
-    
-    
-

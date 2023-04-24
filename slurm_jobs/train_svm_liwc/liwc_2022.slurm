@@ -11,7 +11,7 @@
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --job-name=train_svm
-#SBATCH --output=out/train_svm_embeddings/bert_tail.out
+#SBATCH --output=out/train_svm_liwc/liwc_2022.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -44,7 +44,7 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_svm.py "/cluster/home/martijni/NTNU-Masters/src/experiments/features/embeddings/train_sliced_stair_twitter_bert_tail.h5"
+python3 train_svm.py "/cluster/home/martijni/NTNU-Masters/src/experiments/features/liwc/h5/2022/LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis.h5"
 
 # Print idun stats
 uname -a

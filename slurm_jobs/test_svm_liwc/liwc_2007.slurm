@@ -1,6 +1,6 @@
 #!/bin/sh
-#SBATCH --partition=GPUQ
-##SBATCH --partition=CPUQ
+##SBATCH --partition=GPUQ
+#SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
 #SBATCH --time=48:00:00
@@ -11,7 +11,7 @@
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --job-name=train_svm
-#SBATCH --output=out/train_svm_embeddings/bert_tail.out
+#SBATCH --output=out/test_svm_liwc/liwc_2007.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -43,8 +43,9 @@ pip install -r requirements.txt --user -q
 
 # Run code
 echo "Running code"
-cd "src/experiments/models/train"
-python3 train_svm.py "/cluster/home/martijni/NTNU-Masters/src/experiments/features/embeddings/train_sliced_stair_twitter_bert_tail.h5"
+cd "src/experiments/models/test"
+echo "Threshold = 0.5"
+python test_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/models/saved_models/svm/liwc/2007/LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis/sklearn_model.sav" "/cluster/home/martijni/NTNU-Masters/src/experiments/features/liwc/h5/2007/LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.h5" -t 0.5
 
 # Print idun stats
 uname -a
