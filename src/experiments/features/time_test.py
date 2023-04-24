@@ -1,28 +1,13 @@
 import time
-from typing import Union
 import pandas as pd
 from pathlib import Path
 from csv import QUOTE_NONE
 import os
 import sys
-import torch
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
-from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vectors, get_bert_word_embeddings, _tokenize_with_preprocessing, _apply_fixed_sentence_length
-import h5py
-import numpy as np
-from bs4 import BeautifulSoup
-import torch
-from nltk.tokenize import RegexpTokenizer
-from nltk.corpus import stopwords
-from torchtext.vocab import FastText, GloVe
-from transformers import AutoTokenizer, AutoModel
-from bs4 import BeautifulSoup
-import re
-from typing import List
-from transformers import pipeline, logging
+from utils.word_embeddings import _tokenize_with_preprocessing, _apply_fixed_sentence_length
 import os
 from pathlib import Path
-from math import floor
 
 data_path = Path(os.path.abspath("")).parents[1] / "dataset_creation" / "data" / "train_test"
 
