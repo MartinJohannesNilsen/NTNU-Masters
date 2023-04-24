@@ -1,8 +1,8 @@
 Information
-ID: 17988105
+ID: 18025480
 Name: train_svm
 Directory: /cluster/home/martijni/NTNU-Masters
-Nodes: idun-05-10
+Nodes: idun-04-07
 Number of nodes: 1
 Cores: 1
 Cores per node: 1
@@ -35,7 +35,12 @@ IMPORTANT: You may need to close and restart your shell after running 'conda ini
 
 Pip install requirements
 Running code
-glove
-fasttext
-bert
-Linux idun-05-10 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
+Traceback (most recent call last):
+  File "train_svm.py", line 152, in <module>
+    def main(path):
+  File "/cluster/apps/eb/software/Python/3.8.6-GCCcore-10.2.0/lib/python3.8/site-packages/click/decorators.py", line 168, in decorator
+    _param_memo(f, ArgumentClass(param_decls, **attrs))
+  File "/cluster/apps/eb/software/Python/3.8.6-GCCcore-10.2.0/lib/python3.8/site-packages/click/core.py", line 1984, in __init__
+    Parameter.__init__(self, param_decls, required=required, **attrs)
+TypeError: __init__() got an unexpected keyword argument 'help'
+Linux idun-04-07 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux

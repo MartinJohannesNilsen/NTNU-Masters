@@ -122,21 +122,12 @@ def _liwc(path, liwc_dict = "2022", batch_size = None, cross_validation_splits: 
 
 
 # Training based on selected feature
-def train_embeddings(path: str, emb:str = None, cross_val_splits = None):
-    if emb:
-        assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
-        path = path.replace("$EMBTYPE", emb)
-        if cross_val_splits:
-            _embedding(emb_type=emb, path=path, cross_validation_splits=cross_val_splits)
-        else:
-            _embedding(emb_type=emb, path=path, batch_size=32)
+def train_embeddings(path: str, emb:str = "glove", cross_val_splits = None):
+    assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
+    if cross_val_splits:
+        _embedding(emb_type=emb, path=path, cross_validation_splits=cross_val_splits)
     else:
-        for emb_type in SUPPORTED_EMBEDDINGS:
-            path = path.replace("$EMBTYPE", emb)
-            if cross_val_splits:
-                _embedding(emb_type=emb_type, path=path, cross_validation_splits=cross_val_splits)
-            else:
-                _embedding(emb_type=emb_type, path=path, batch_size=32)
+        _embedding(emb_type=emb, path=path, batch_size=32)
 
 
 def train_liwc(path: str, liwc_dict:str = None, cross_val_splits = None):
@@ -157,30 +148,32 @@ def train_liwc(path: str, liwc_dict:str = None, cross_val_splits = None):
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-e", "--embedding", type=click.Choice(["glove", "fasttext", "bert"]), default=None, help="Embedding type")
-@click.option("-p", "--padding", type=click.Choice(["head", "tail", "split"]), default="tail", help="LIWC dictionary")
-@click.option("-s", "--short", isFlag=True, default=False, help="Use 256 instead of 512 as max len for posts")
-@click.option("-l", "--liwc", type=click.Choice(["2022", "2015", "2007", "2001"]), default=None, help="LIWC dictionary")
+@click.argument("path", help="Path to h5")
+def main(path):
 
-def main(embedding, padding, short, liwc):
-    assert embedding or liwc, "Please select feature set!"
-    if embedding:
-        assert padding, "Please set padding!"
-        # demo_path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"hold_out_test_sliced_stair_twitter_$EMBTYPE_{padding}{'_256' if short else ''}.h5")
-        # test_path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"test_sliced_stair_twitter_$EMBTYPE_50_{padding}{'_256' if short else ''}.h5")
-        train_path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / f"train_sliced_stair_twitter_$EMBTYPE_50_{padding}{'_256' if short else ''}.h5")
+    # Check that path leads to file
+    assert os.path.isfile(path), "No file found!"
 
-        train_embeddings(train_path)
+    if "embeddings" in path:
+        # Find emb_type
+        emb_type = None
+        if "glove_50" in path:
+            emb_type = "glove_50"
+        elif "glove" in path:
+            emb_type = "glove"
+        elif "fasttext" in path:
+            emb_type = "fasttext"
+        elif "bert" in path:
+            emb_type = "bert"
+        train_embeddings(path, emb_type)
         
-    if liwc:
-        # demo_path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "h5" / "$LIWCDICT" / f"LIWC-22 Results - shooter_hold_out_test - LIWC Analysis.h5")
-        # test_path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "h5" / "$LIWCDICT" / f"LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.h5")
-        train_path = str(Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "h5" / "$LIWCDICT" / f"LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis.h5")
-
-        train_liwc(train_path)
+    elif "LIWC" in path:
+        train_liwc(path)
 
 if __name__ == "__main__":
     main()
+
+    # python 
 
     
     

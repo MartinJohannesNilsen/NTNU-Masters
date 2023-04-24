@@ -44,7 +44,7 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_svm.py
+python3 train_svm.py "/cluster/home/martijni/NTNU-Masters/src/experiments/features/embeddings/hold_out_test_sliced_stair_twitter_bert_head_256.h5"
 
 # Print idun stats
 uname -a
