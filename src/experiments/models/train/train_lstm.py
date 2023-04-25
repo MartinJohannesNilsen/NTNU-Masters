@@ -69,22 +69,21 @@ class TextDataset(Dataset):
 
 
 
-class TextClassifier(nn.Module):
-    def __init__(self, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
-        super(TextClassifier, self).__init__()
+class LSTMTextClassifier(nn.Module):
+    def __init__(self, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, dropout: int = 0.5, hidden_size: int = 128, num_layers: int = 2):
+        super(LSTMTextClassifier, self).__init__()
 
-        self.conv1d_list = nn.ModuleList([
-            nn.Conv1d(in_channels=emb_dim,
-                      out_channels=num_filters[i],
-                      kernel_size=filter_sizes[i])
-            for i in range(len(filter_sizes))
-        ])
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
 
-        #self.lstm = nn.LSTM(sentence_len, batch_size, )
+        self.lstm = nn.LSTM(sentence_len, hidden_size, num_layers, batch_first=True, bidirectional=True)
 
-        self.fc = nn.Linear(np.sum(num_filters), 1)
-        self.dropout = nn.Dropout(p=dropout)
+        self.fc = nn.Linear(2*hidden_size, 1)
+        #self.dropout = nn.Dropout(p=dropout)
+        
         self.sig = nn.Sigmoid() # Sigmoid to squeeze final vals between 0 and 1 to accomodate for binary class prob
+
+
 
     def forward(self, x):
         """Perform a forward pass through the network.
@@ -98,36 +97,16 @@ class TextClassifier(nn.Module):
                 n_classes)
         """
 
-        # Input shape: (b, max_len, embed_dim)
+        # Init hidden layer and cell states for each forward pass
 
-        # Permute `x_embed` to match input shape requirement of `nn.Conv1d`.
-        # Output shape: (b, embed_dim, max_len)
-        x_reshaped = x.permute(0, 2, 1)
-        #print(f"size: {x_reshaped.size()}")
+        hidden_states = torch.zeros(self.num_layers, x.size[0], self.hidden_size)
+        cell_states = torch.zeros(self.num_layers, x.size[0], self.hidden_size)
 
-        # Apply CNN and ReLU. Output shape: (b, num_filters[i], L_out)
-        x_conv_list = [F.relu(conv1d(x_reshaped)) for conv1d in self.conv1d_list]
-
-        # Max pooling. Output shape: (b, num_filters[i], 1)
-        x_pool_list = [F.max_pool1d(x_conv, kernel_size=x_conv.shape[2])
-            for x_conv in x_conv_list]
-        
-        # Concatenate x_pool_list to feed the fully connected layer.
-        # Output shape: (b, sum(num_filters))
-        x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
-                         dim=1)
-        
-        #print(f"Size after squeeze and flatten: {x_fc.size()}")
-
-        # Compute logits. Output shape: (b, n_classes)
-        out = self.fc(self.dropout(x_fc))
-
-        #print(f"output after dropout={0.5} and fc layer: {out}")
-
-        # Squeeze between class 0 and 1 (non-shooter and shooter)
-        out = self.sig(out)
+        out, _ = self.lstm(x, (hidden_states, cell_states))
+        out = self.fc(out[:, -1, :])
 
         return out
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(0)
@@ -154,7 +133,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create model
-    model = TextClassifier(emb_dim=embedding_dim).to(device)
+    model = LSTMTextClassifier(emb_dim=embedding_dim).to(device)
 
     # Create loss function and optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)

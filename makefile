@@ -33,3 +33,6 @@ t:
 
 gpu:
 	nvidia-smi
+
+train-cnn:
+	chmod u+x slurm_jobs/train_cnn.slurm  slurm_jobs/train_cnn1.slurm slurm_jobs/train_cnn2.slurm slurm_jobs/train_cnn3.slurm slurm_jobs/train_cnn4.slurm  && sbatch slurm_jobs/train_cnn.slurm && sbatch slurm_jobs/train_cnn1.slurm && sbatch slurm_jobs/train_cnn2.slurm && sbatch slurm_jobs/train_cnn3.slurm && sbatch slurm_jobs/train_cnn4.slurm
