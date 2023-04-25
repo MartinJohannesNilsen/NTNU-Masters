@@ -106,16 +106,16 @@ def get_posts_ordered_by_confusion_matrix(texts: List[str], predictions: List[fl
             elif labels[i] == 0: # True Negative
                 text_dicts["tn"].append(texts[i])
         else: # False
-            if labels[i] == 1: # False Positive
+            if labels[i] == 0: # False Positive
                 text_dicts["fp"].append(texts[i])
-            elif labels[i] == 0: # False Negative
+            elif labels[i] == 1: # False Negative
                 text_dicts["fn"].append(texts[i])
     return text_dicts
 
 
 if __name__ == "__main__":
 
-    ex = ["This is true negative", "This is false positive", "This is true positive", "This is false negative"]
+    ex = ["This is true negative", "This is false negative", "This is true positive", "This is false positive"]
     preds = [0, 0, 1, 1]
     labels = [0, 1, 1, 0]
     print(get_posts_ordered_by_confusion_matrix(ex, preds, labels))
