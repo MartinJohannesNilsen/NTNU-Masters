@@ -10,7 +10,7 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=train_xgboost
+#SBATCH --job-name=test_xgboost
 #SBATCH --output=out/test_xgboost_liwc/liwc_2007.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
