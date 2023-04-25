@@ -44,7 +44,7 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_knn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/features/embeddings/train_sliced_stair_twitter_glove_split.h5"
+python3 train_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/features/embeddings/train_sliced_stair_twitter_glove_split.h5" --model "knn"
 
 # Print idun stats
 uname -a
