@@ -15,6 +15,19 @@ from math import floor
 
 cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"
 
+def _pad_and_get_orig_seq_len(text, max_len):
+    
+    og_len = len(text)
+
+    if og_len < max_len:
+        req_padding = max_len - og_len
+        [text.append(float(0)) for _ in range(req_padding)]
+    
+    elif og_len > max_len:
+        text = text[:max_len]
+
+    return text, og_len
+
 def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, emb_dim: int, pad_pos: str = "tail") -> torch.tensor:
     """Pad if embedding is smaller then sentence length, and truncate if longer.
 
@@ -27,6 +40,7 @@ def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, 
     Returns:
         torch.tensor: New tensor with fixed sentence length.
     """
+
     if embedding.shape[0] < sentence_length:
         req_padding = sentence_length - embedding.shape[0]
         pad_tensor = torch.zeros(req_padding, emb_dim)
@@ -45,6 +59,9 @@ def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, 
 
     elif embedding.shape[0] > sentence_length:
         embedding = embedding[:sentence_length, :]
+
+    
+
     return embedding
 
 
@@ -130,6 +147,47 @@ def get_glove_model(size_small: bool = True):
 
     return glove_vec
     
+def get_emb_layer(emb_dim, emb_type):
+
+    path = None
+    if emb_type == "glove":
+        dim_name = "6B.50d" if emb_dim == 50 else "840B.300d"
+        path = cache_dir / f"glove.{dim_name}.txt"
+    else:
+        path = cache_dir / "wiki.en.vec"
+
+    all_contents = None
+    vocab, embs = [], []
+    with open(path, "rt") as f:
+        all_contents = f.read().strip().split("\n")
+    
+    for i in range(len(all_contents)):
+        word_i = all_contents[i].split(" ")[0]
+        emb_i = [float(val) for val in all_contents.split(" ")[1:]]
+
+        vocab.append(word_i)
+        embs.append(emb_i)
+    
+    vocab_np = np.array(vocab)
+    embs_np = np.array(embs)
+
+    vocab_np = np.insert(vocab_np, 0, "<pad>")
+    vocab_np = np.insert(vocab_np, 1, "<unk>")
+
+    pad_emb_np = np.zeros((1, embs_np.shape[1]))
+    unk_emb_np = np.mean(embs_np, axis=0, keepdims=True)
+
+    embs_np = np.vstack((pad_emb_np, unk_emb_np, embs_np))
+
+    return embs_np
+
+def get_id_from_tokens(tokens, emb_model):
+    out_idx = []
+    for tk in tokens:
+        out_idx.append(emb_model.__getitem__(tk))
+    
+    return out_idx
+
 
 def get_glove_word_vectors(input: str or List[str], emb_model = None, sentence_length: int = None, emb_dim: int = 300, pad_pos: str = "tail"):
     """Generates word vectors in the format of GloVe, using torch.vocab.
