@@ -294,6 +294,22 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
             embedding_hold_out_df = None
 
 
+def make_last_3_bert(dfs, emb_type: str = "bert", pad_type: str = "split"):
+    print(f"Type: {emb_type}, train 256, {pad_type}")
+    embedding_train_df = dfs["train_256"].copy()
+    create_and_store_embeddings(embedding_train_df, out_path / f"train_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)    
+    embedding_train_df = None    
+
+    print(f"Type: {emb_type}, test 256, {pad_type}")
+    embedding_test_df = dfs["test_256"].copy()
+    create_and_store_embeddings(embedding_test_df, out_path / f"test_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)
+    embedding_test_df = None
+
+    print(f"Type: {emb_type}, hold out 256, {pad_type}")
+    embedding_hold_out_df = dfs["hold_out_256"].copy()
+    create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_test_sliced_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)
+    embedding_hold_out_df = None
+
 if __name__ == "__main__":
 
     train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")[0:602]
