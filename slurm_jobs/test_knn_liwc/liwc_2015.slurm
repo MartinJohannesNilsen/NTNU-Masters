@@ -10,7 +10,7 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=train_knn
+#SBATCH --job-name=test_knn
 #SBATCH --output=out/test_knn_liwc/liwc_2015.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL

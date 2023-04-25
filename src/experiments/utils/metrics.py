@@ -97,32 +97,53 @@ def print_metrics_comprehensive(metrics: dict):
     print(f"\"Tells us about the capability of model in distinguishing the classes\"")
     print(f"{round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "undefined")
 
+def get_posts_ordered_by_confusion_matrix(texts: List[str], predictions: List[float], labels: List[float]):
+    text_dicts = {"tp": [], "fp": [], "tn": [], "fn": []}
+    for i, prediction in enumerate(predictions):
+        if prediction == labels[i]: # True
+            if labels[i] == 1: # True Positive
+                text_dicts["tp"].append(texts[i])
+            elif labels[i] == 0: # True Negative
+                text_dicts["tn"].append(texts[i])
+        else: # False
+            if labels[i] == 1: # False Positive
+                text_dicts["fp"].append(texts[i])
+            elif labels[i] == 0: # False Negative
+                text_dicts["fn"].append(texts[i])
+    return text_dicts
+
+
 if __name__ == "__main__":
+
+    ex = ["This is true negative", "This is false positive", "This is true positive", "This is false negative"]
+    preds = [0, 0, 1, 1]
+    labels = [0, 1, 1, 0]
+    print(get_posts_ordered_by_confusion_matrix(ex, preds, labels))
     
-    metrics = {
-        "tn": 1,
-        "fp": 2,
-        "fn": 3,
-        "tp": 4,
-        "accuracy": 5,
-        "precision": 6,
-        "recall": 7,
-        "specificity": 8,
-        "f1_score": 9,
-        "roc_auc": None
-    }
+    # metrics = {
+    #     "tn": 1,
+    #     "fp": 2,
+    #     "fn": 3,
+    #     "tp": 4,
+    #     "accuracy": 5,
+    #     "precision": 6,
+    #     "recall": 7,
+    #     "specificity": 8,
+    #     "f1_score": 9,
+    #     "roc_auc": None
+    # }
 
-    metrics2 = {
-        "tn": 1,
-        "fp": 2,
-        "fn": 3,
-        "tp": 4,
-        "accuracy": 5,
-        "precision": 6,
-        "recall": 7,
-        "specificity": 8,
-        "f1_score": 9,
-        "roc_auc": 10
-    }
+    # metrics2 = {
+    #     "tn": 1,
+    #     "fp": 2,
+    #     "fn": 3,
+    #     "tp": 4,
+    #     "accuracy": 5,
+    #     "precision": 6,
+    #     "recall": 7,
+    #     "specificity": 8,
+    #     "f1_score": 9,
+    #     "roc_auc": 10
+    # }
 
-    get_average_metrics([metrics, metrics2])
+    # get_average_metrics([metrics, metrics2])

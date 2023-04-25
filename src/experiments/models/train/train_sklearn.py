@@ -31,12 +31,12 @@ def _get_model(model = "xgboost"):
     elif model == "xgboost":
         return XGBRegressor()
     elif model == "gaussian":
-        kernels = {
+        k = {
             "rbf": kernels.RBF(), # Default
             "rq": kernels.RationalQuadratic(),
             "white": kernels.WhiteKernel()
             }
-        return GaussianProcessClassifier(kernel=kernels["white"], n_restarts_optimizer=5)
+        return GaussianProcessClassifier(kernel=k["white"], n_restarts_optimizer=5)
     else:
         raise NotImplementedError()
 

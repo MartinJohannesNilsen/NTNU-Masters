@@ -10,7 +10,7 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=train_svm
+#SBATCH --job-name=test_svm
 #SBATCH --output=out/test_svm_liwc/liwc_2001.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
@@ -44,8 +44,13 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/test"
-echo "Threshold = 0.5"
-python test_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/models/saved_models/svm/liwc/2001/LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis/sklearn_model.sav" "/cluster/home/martijni/NTNU-Masters/src/experiments/features/liwc/h5/2001/LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.h5" -t 0.5
+
+# Run with thresholds
+for t in $(seq 0 0.025 1)
+do
+    echo -e "\nThreshold = $t"
+    python test_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/models/saved_models/svm/liwc/2001/LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis/sklearn_model.sav" "/cluster/home/martijni/NTNU-Masters/src/experiments/features/liwc/h5/2001/LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.h5" -t $t
+done
 
 # Print idun stats
 uname -a

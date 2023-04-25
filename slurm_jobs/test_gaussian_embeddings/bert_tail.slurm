@@ -10,8 +10,8 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=test_nb
-#SBATCH --output=out/test_nb_liwc/liwc_2022.out
+#SBATCH --job-name=test_gaussian
+#SBATCH --output=out/test_gaussian_embeddings/bert_tail.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -45,7 +45,7 @@ pip install -r requirements.txt --user -q
 echo "Running code"
 cd "src/experiments/models/test"
 echo "Threshold = 0.5"
-python test_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/models/saved_models/nb/liwc/2022/LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis/sklearn_model.sav" "/cluster/home/martijni/NTNU-Masters/src/experiments/features/liwc/h5/2022/LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.h5" -t 0.5
+python test_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/models/saved_models/gaussian/embeddings/bert/train_sliced_stair_twitter_bert_tail/sklearn_model.sav" "/cluster/home/martijni/NTNU-Masters/src/experiments/features/embeddings/test_sliced_stair_twitter_bert_tail.h5" -t 0.5
 
 # Print idun stats
 uname -a
