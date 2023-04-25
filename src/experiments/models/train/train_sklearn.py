@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import click
 import numpy as np
-from sklearn.naive_bayes import GaussianNB
+
 import pickle   
 from sklearn.model_selection import KFold
 from tabulate import tabulate
@@ -12,11 +12,33 @@ experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
 from experiments.utils.metrics import get_metrics, get_average_metrics
 from experiments.features.load_and_store_emb_batches import read_h5
+# Models
+from sklearn.svm import SVC, SVR
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from xgboost import XGBRegressor
+from sklearn.gaussian_process import kernels, GaussianProcessClassifier
 
 
 # Training utitilites
-def _get_model():
-    return GaussianNB()
+def _get_model(model = "xgboost"):
+    if model == "svm":
+        return SVR()
+    elif model == "nb":
+        return GaussianNB()
+    elif model == "knn":
+        return KNeighborsClassifier(n_neighbors = 5)
+    elif model == "xgboost":
+        return XGBRegressor()
+    elif model == "gaussian":
+        kernels = {
+            "rbf": kernels.RBF(), # Default
+            "rq": kernels.RationalQuadratic(),
+            "white": kernels.WhiteKernel()
+            }
+        return GaussianProcessClassifier(kernel=kernels["white"], n_restarts_optimizer=5)
+    else:
+        raise NotImplementedError()
 
 def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
     # Save the model to disk
@@ -28,10 +50,10 @@ def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
         
 
 # Training
-def training(saved_model_dir, path, batch_size = None, cross_validation_splits: int = None):
+def training(saved_model_dir, path, model_type, batch_size = None, cross_validation_splits: int = None):
 
     # Get model
-    model = _get_model()
+    model = _get_model(model_type)
     
     # Run cross_val if number of splits is defined
     if cross_validation_splits:
@@ -111,37 +133,38 @@ def training(saved_model_dir, path, batch_size = None, cross_validation_splits: 
 
 # Helper functions for feature based training
 SUPPORTED_EMBEDDINGS = ["glove", "glove_50", "fasttext", "bert"]
-def _embedding(path, emb_type = "glove", batch_size = None, cross_validation_splits: int = None):
+def _embedding(path, emb_type, model, batch_size = None, cross_validation_splits: int = None):
     assert emb_type in SUPPORTED_EMBEDDINGS, "Embedding type not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / 'embeddings' / emb_type / Path(path).stem, path=path, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb_type / Path(path).stem, path=path, model_type=model, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
 
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
-def _liwc(path, liwc_dict = "2022", batch_size = None, cross_validation_splits: int = None):
+def _liwc(path, liwc_dict, model, batch_size = None, cross_validation_splits: int = None):
     assert liwc_dict in SUPPORTED_LIWC_DICTS, "LIWC dictionary version not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / 'svm' / 'liwc' / f'{liwc_dict}' / Path(path).stem, path=path, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / f'{liwc_dict}' / Path(path).stem, path=path, model_type=model, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
 
 
 # Training based on selected feature
-def train_embeddings(path: str, emb:str = "glove", cross_val_splits = None):
+def train_embeddings(path: str, emb:str, model:str, cross_val_splits = None):
     assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
     if cross_val_splits:
-        _embedding(emb_type=emb, path=path, cross_validation_splits=cross_val_splits)
+        _embedding(emb_type=emb, path=path, model=model, cross_validation_splits=cross_val_splits)
     else:
-        _embedding(emb_type=emb, path=path, batch_size=32)
+        _embedding(emb_type=emb, path=path, model=model, batch_size=32)
 
 
-def train_liwc(path: str, liwc_dict:str = "2022", cross_val_splits = None):
+def train_liwc(path: str, liwc_dict:str, model:str, cross_val_splits = None):
     assert liwc_dict in SUPPORTED_LIWC_DICTS, "Liwc dictionary not supported!"
     if cross_val_splits:
-        _liwc(path=path, liwc_dict=liwc_dict, cross_validation_splits=cross_val_splits)
+        _liwc(path=path, liwc_dict=liwc_dict, model=model, cross_validation_splits=cross_val_splits)
     else:
-        _liwc(path=path, liwc_dict=liwc_dict)
+        _liwc(path=path, liwc_dict=liwc_dict, model=model)
 
 
 click.option = partial(click.option, show_default=True)
 @click.command()
 @click.argument("path", nargs=1)
-def main(path):
+@click.option("-m", "--model", type=click.Choice(["svm", "nb", "xgboost", "knn", "gaussian"]), default="svm", help="Model to select from saved models")
+def main(path, model):
 
     # Check that path leads to file
     assert os.path.isfile(path), "No file found!"
@@ -158,7 +181,7 @@ def main(path):
         elif "bert" in path:
             emb_type = "bert"
         assert emb_type, "Incorrect format, could not find embedding!"
-        train_embeddings(path, emb_type)
+        train_embeddings(path, emb_type, model)
         
     elif "LIWC" in path:
         # Find liwc_dict
@@ -172,7 +195,7 @@ def main(path):
         elif "2001" in path:
             liwc_dict = "2001"
         assert liwc_dict, "Incorrect format, could not find LIWC dict!"
-        train_liwc(path, liwc_dict)
+        train_liwc(path, liwc_dict, model)
 
 if __name__ == "__main__":
     main()

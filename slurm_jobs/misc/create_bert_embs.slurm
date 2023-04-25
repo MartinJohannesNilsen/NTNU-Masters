@@ -3,7 +3,7 @@
 #SBATCH --partition=CPUQ
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
-#SBATCH --time=48:00:00
+#SBATCH --time=96:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
