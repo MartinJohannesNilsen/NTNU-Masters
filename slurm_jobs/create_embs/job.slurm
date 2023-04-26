@@ -3,17 +3,16 @@
 #SBATCH --partition=CPUQ
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
-#SBATCH --time=48:00:00
+#SBATCH --time=96:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=create_ft_embs
-#SBATCH --output=out/create_ft.out
-#SBATCH --mail-user=olejlia@stud.ntnu.no
+#SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
+#SBATCH --export=emb,padding,purpose,size
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -46,7 +45,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/features"
-python3 load_and_store_emb_batches.py --emb "fasttext"
+python3 load_and_store_emb_batches.py --no-stair-twitter --emb $emb
 
 # Print idun stats
 uname -a

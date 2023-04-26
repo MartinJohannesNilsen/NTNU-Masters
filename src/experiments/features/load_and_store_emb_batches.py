@@ -354,7 +354,7 @@ click.option = partial(click.option, show_default=True)
 @click.option("--purpose", type=click.Choice(["train", "test", "hold_out", None]), default=None, help="")
 @click.option("--size", type=click.Choice(["512", "256", None]), default=None, help="")
 @click.option("--no-stair-twitter", isFlag=True, default=True, help="")
-def main(emb_type, padding = None, purpose = None, size = None, no_stair_twitter = True):
+def main(emb_type, padding, purpose, size, no_stair_twitter):
     
     dfs = get_dfs()
     create_and_store_all_embs_of_type(dfs, emb_type=emb_type, padding=padding, purpose=purpose, size=size, no_stair_twitter=no_stair_twitter)
