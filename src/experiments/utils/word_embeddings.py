@@ -160,10 +160,11 @@ def get_emb_matrix(emb_dim, emb_type, vocab_len, word_to_index):
     else:
         path = cache_dir / "wiki.en.vec"
 
-    embed_mat = np.random.rand(vocab_len + 1, emb_dim)
+    #embed_mat = np.random.rand(vocab_len + 1, emb_dim)
+    embed_mat = np.zeros([vocab_len + 1, emb_dim])
 
-    with open(path, "r+", encoding="utf-8") as feature:
-        for idx, line in enumerate(infile):
+    with open(path, "r+", encoding="utf-8") as f:
+        for idx, line in enumerate(f):
             elem = line.split(" ")
             word = elem[0]
 
@@ -172,7 +173,7 @@ def get_emb_matrix(emb_dim, emb_type, vocab_len, word_to_index):
 
             word_idx = word_to_index[word]
 
-            if word_idx <= max_idx:
+            if word_idx <= vocab_len:
                 embed_mat[word_idx] = np.asarray(elem[1:], dtype='float32')
 
     return embed_mat
@@ -217,6 +218,41 @@ def get_id_from_tokens(text, word_to_idx):
             ids.append(1)
 
     return ids
+
+
+def pad_ids(ids, pad_pos, max_len):
+    length = len(ids)
+    if length < max_len:
+        req_padding = max_len - length
+        pad = [0 for _ in range(req_padding)]
+
+        if pad_pos == "head":
+            pad += ids
+            ids = pad
+
+        elif pad_pos == "tail":
+            ids += pad
+
+        else:
+            split_i = floor(req_padding/2)
+            front_pad = [0 for _ in range(split_i)]
+            end_pad = [0 for _ in range(req_padding - split_i)]
+            front_pad += ids
+            front_pad += end_pad
+            ids = front_pad
+            
+    elif length > sentence_length:
+        ids = ids[:max_len]
+
+    return np.array(ids), length
+
+
+def get_padded_ids(text, word_to_idx, pad_pos, max_len):
+    ids = get_id_from_tokens(text, word_to_idx)
+
+    padded_ids, length = pad_ids(ids, pad_pos, max_len)
+
+    return [padded_ids, length]
 
 
 def get_glove_word_vectors(input: str or List[str], emb_model = None, sentence_length: int = None, emb_dim: int = 300, pad_pos: str = "tail"):
