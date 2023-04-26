@@ -60,10 +60,10 @@ if __name__ == "__main__":
     _find_field_size_limit()
 
     # Read all labeled data
-    data_path = Path(os.path.abspath("")) / "data" / "train_test"
+    data_path = Path(os.path.abspath(__file__)).parent / "data" / "train_test"
     
-    train_df = pd.read_csv(data_path / "train_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
-    test_df = pd.read_csv(data_path / "test_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    train_df = pd.read_csv(data_path / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    test_df = pd.read_csv(data_path / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     shooter_hold_out_df = pd.read_csv(data_path / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
     train_df = split_rows(train_df, 256)
@@ -72,6 +72,6 @@ if __name__ == "__main__":
     
 
     # Write dataframe to csv
-    train_df.to_csv(data_path / "train_sliced_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)           
-    test_df.to_csv(data_path / "test_sliced_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)           
+    train_df.to_csv(data_path / "train_no_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)           
+    test_df.to_csv(data_path / "test_no_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)           
     shooter_hold_out_df.to_csv(data_path / "shooter_hold_out_test_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)           
