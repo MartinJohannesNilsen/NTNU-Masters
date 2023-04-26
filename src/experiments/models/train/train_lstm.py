@@ -136,7 +136,7 @@ class LSTMTextClassifier(nn.Module):
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(0)
+torch.manual_seed(0) 
 
 def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sentence_length: int = 256, embedding_dim: int = 300):
     # 222

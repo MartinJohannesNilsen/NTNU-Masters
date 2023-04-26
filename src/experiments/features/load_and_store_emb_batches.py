@@ -358,8 +358,6 @@ def main(emb_type, padding = None, purpose = None, size = None, no_stair_twitter
     
     dfs = get_dfs()
     create_and_store_all_embs_of_type(dfs, emb_type=emb_type, padding=padding, purpose=purpose, size=size, no_stair_twitter=no_stair_twitter)
-    
-
 
 if __name__ == "__main__":
     main()
