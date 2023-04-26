@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 from math import floor
 import numpy as np
+import pandas as pd
 
 cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"
 
