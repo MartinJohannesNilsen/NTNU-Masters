@@ -149,7 +149,8 @@ def get_glove_model(size_small: bool = True):
 
     return glove_vec
     
-def get_emb_layer(emb_dim, emb_type):
+
+def get_emb_matrix(emb_dim, emb_type, vocab_len, word_to_index):
 
     path = None
     if emb_type == "glove":
@@ -158,41 +159,63 @@ def get_emb_layer(emb_dim, emb_type):
     else:
         path = cache_dir / "wiki.en.vec"
 
-    emb_dict = {}
-    with open(path, "r+", encoding="utf-8") as f:
-        for line in f:
-            vals = line.split()
-            word = vals[0]
-            embs = np.asarray(vals[1:], "float32")
-            emb_dict[word] = embs
-    
-    """ for i in range(len(all_contents)):
-        word_i = all_contents[i].split(" ")[0]
-        emb_i = [float(val) for val in all_contents.split(" ")[1:]]
+    embed_mat = np.random.rand(vocab_len + 1, emb_dim)
 
-        vocab.append(word_i)
-        embs.append(emb_i)
-    
-    vocab_np = np.array(vocab)
-    embs_np = np.array(embs)
+    with open(path, "r+", encoding="utf-8") as feature:
+        for idx, line in enumerate(infile):
+            elem = line.split(" ")
+            word = elem[0]
 
-    vocab_np = np.insert(vocab_np, 0, "<pad>")
-    vocab_np = np.insert(vocab_np, 1, "<unk>")
+            if word not in word_to_index:
+                continue
 
-    pad_emb_np = np.zeros((1, embs_np.shape[1]))
-    unk_emb_np = np.mean(embs_np, axis=0, keepdims=True)
+            word_idx = word_to_index[word]
 
-    embs_np = np.vstack((pad_emb_np, unk_emb_np, embs_np)) """
+            if word_idx <= max_idx:
+                embed_mat[word_idx] = np.asarray(elem[1:], dtype='float32')
 
-    return emb_dict
+    return embed_mat
+
+def split_safe(text):
+    return str(text).split(" ")
+
+def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True):
+    """
+    Input:
+        df: Pandas dataframe containing a 'text' column
+
+    Output:
+        dict: A dictionary containing all unique words in vocab and their counts
+    """
+    if not is_preprocessed:
+        df["text"] = df["text"].map(lambda a: _tokenize_with_preprocessing(a))
 
 
-def get_id_from_tokens(tokens, emb_model):
-    out_idx = []
-    for tk in tokens:
-        out_idx.append(emb_model.__getitem__(tk))
-    
-    return out_idx
+    counts = {}
+    for row in df["text"].map(lambda a: split_safe(a)):
+        for word in row:
+            if word not in counts:
+                counts[word] = 1
+            else:
+                counts[word] += 1
+
+    # Drop underrepresented words and create vocab
+    vocab = {'<PAD>': 0, '<UNK>': 1}
+    for key in counts.keys():
+        if counts[key] >= 3:
+            vocab[key] = len(vocab)
+
+    return vocab
+
+def get_id_from_tokens(text, word_to_idx):
+    ids = []
+    for token in split_safe(text):
+        if token in word_to_idx:
+            ids.append(word_to_idx[token])
+        else:
+            ids.append(1)
+
+    return ids
 
 
 def get_glove_word_vectors(input: str or List[str], emb_model = None, sentence_length: int = None, emb_dim: int = 300, pad_pos: str = "tail"):
@@ -229,6 +252,7 @@ def get_glove_word_vectors(input: str or List[str], emb_model = None, sentence_l
 
 def get_ft_model():
     return FastText(language="en", cache=cache_dir) # 6.6GB
+
 
 
 def get_fasttext_word_vectors(input: str or List[str], emb_model = None, sentence_length: int = None, pad_pos: str = "tail"):
