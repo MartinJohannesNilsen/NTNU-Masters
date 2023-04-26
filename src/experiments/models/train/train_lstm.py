@@ -388,4 +388,3 @@ def main(path):
 
 if __name__ == "__main__":
     train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=50)
-
