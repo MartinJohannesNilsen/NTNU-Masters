@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=emb,padding,purpose,size
+#SBATCH --export=model_path,test_path,output
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -45,8 +45,13 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/features"
-# python3 load_and_store_emb_batches.py --emb $emb --padding $padding --purpose $purpose --size $size
-python3 load_and_store_emb_batches.py --no-stair-twitter --emb $emb --padding $padding --purpose $purpose --size $size
+
+# Run for loop of thresholds
+for i in $(seq 0 0.05 1)
+do
+    echo "Threshold = $i"
+    python test_sklearn.py $model_path $test_path --threshold $i --output $output
+done
 
 # Print idun stats
 uname -a

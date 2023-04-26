@@ -1,19 +1,18 @@
 #!/bin/sh
-##SBATCH --partition=GPUQ
-#SBATCH --partition=CPUQ
-##SBATCH --partition=short
+#SBATCH --partition=GPUQ
+##SBATCH --partition=CPUQ
+##SBATCH --partition=
 #SBATCH --account=share-ie-idi
-#SBATCH --time=48:00:00
+#SBATCH --time=96:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
-##SBATCH --constraint="V100"
+##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=test_xgboost
-#SBATCH --output=out/test_xgboost_liwc/liwc_2001.out
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
+#SBATCH --export=feature_path,model
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -40,12 +39,13 @@ echo "Activating conda environment"
 conda activate env
 echo "Pip install requirements"
 pip install -r requirements.txt --user -q
+echo "Install nltk stopwords"
+python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/models/test"
-echo "Threshold = 0.5"
-python test_sklearn.py "/cluster/home/martijni/NTNU-Masters/src/experiments/models/saved_models/xgboost/liwc/2001/LIWC-22 Results - train_sliced_stair_twitter - LIWC Analysis/sklearn_model.sav" "/cluster/home/martijni/NTNU-Masters/src/experiments/features/liwc/h5/2001/LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.h5" -t 0.5
+cd "src/experiments/features"
+python3 train_sklearn.py $feature_path --model $model
 
 # Print idun stats
 uname -a
