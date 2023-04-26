@@ -37,19 +37,9 @@ def _find_field_size_limit():
 
 
 class TextDataset(Dataset):
-    def __init__(self, df, emb_type, emb_dim):
+    def __init__(self, df):
         self.df = df
         #print(f"Data length: {self.data_len}")
-        emb_model = None
-
-        if emb_type == "glove":
-            size = emb_dim == 50
-            emb_model = get_glove_model(size)
-        else:
-            emb_model = get_ft_model()
-
-        self.df["text"] = self.df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
-
 
     def __len__(self):
         return len(self.df.index)
@@ -78,7 +68,7 @@ class TextDataset(Dataset):
 
 
 class LSTMTextClassifier(nn.Module):
-    def __init__(self, embs, vocab, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, dropout: int = 0.5, hidden_size: int = 128, num_layers: int = 2):
+    def __init__(self, embs, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, dropout: int = 0.5, hidden_size: int = 128, num_layers: int = 2):
         super(LSTMTextClassifier, self).__init__()
 
         self.embedding = nn.Embedding.from_pretrained(torch.from_numpy(embs).float())
@@ -153,11 +143,28 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     train_df = pd.read_csv(base_path / f"train_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     test_df = pd.read_csv(base_path / f"test_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
-    print("Getting emb layer...")
+    print("Preprocess...")
+
+
+    emb_model = None
+    if embedding_type == "glove":
+        size = embedding_dim == 50
+        emb_model = get_glove_model(size)
+    else:
+        emb_model = get_ft_model()
+
+    train_df["text"] = train_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
+    test_df["text"] = test_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
+
+    print("Garbage collect pretrained word emb dict")
+
+    emb_model = None
+
+    print("Creating datasets...")
 
     # Creating datasets for use with dataloaders
-    train_set = TextDataset(train_df, emb_type=embedding_type, emb_dim=embedding_dim)
-    test_set = TextDataset(test_df, emb_type=embedding_type, emb_dim=embedding_dim)
+    train_set = TextDataset(train_df)
+    test_set = TextDataset(test_df)
 
     print("Constructing dataloaders...")
 
@@ -165,19 +172,24 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     train_loader = DataLoader(train_set, batch_size=222, shuffle=False, pin_memory=True)
     val_loader = DataLoader(test_set, batch_size=1, shuffle=False, pin_memory=True)
 
-    print("Getting emb layer...")
+    print("Get emb_layers")
 
     embs = get_emb_layer(embedding_dim, embedding_type)
 
     print("Constructing model...")
 
     # Create model
-    model = LSTMTextClassifier(embs=embs, vocab=vocab, emb_dim=embedding_dim).to(device)
+    model = LSTMTextClassifier(embs=embs, emb_dim=embedding_dim).to(device)
 
     # Create loss function and optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
+    print("Find class wts...")
+
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
+
+    print(class_wts)
+
 
     def run_epoch():
         running_loss = 0.
@@ -375,5 +387,4 @@ def main(path):
         train_liwc(path, liwc_dict) """
 
 if __name__ == "__main__":
-    train(embedding_type="glove", pad_pos="head", num_epochs=10, sentence_length=256, embedding_dim=300)
-
+    train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=50)

@@ -32,8 +32,7 @@ if __name__ == "__main__":
 
     for fpath in all_fpaths:
         df = pd.read_csv(fpath, sep="‎", quoting=QUOTE_NONE, engine="python")
-        df["text"] = df["text"].map(lambda a: _tokenize_with_preprocessing(a))
-
+        df["text"] = df["text"].map(lambda a: " ".join(_tokenize_with_preprocessing(a)))
 
         stem = Path(fpath).stem
         df.to_csv(str(dest_folder / stem) + "_preprocessed.csv", sep="‎", index=False)
