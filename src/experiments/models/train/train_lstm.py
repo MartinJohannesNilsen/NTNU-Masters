@@ -21,7 +21,7 @@ import h5py
 import numpy as np
 from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
-from experiments.utils.word_embeddings import get_emb_layer, get_glove_model, get_ft_model, get_id_from_tokens, _pad_and_get_orig_seq_len
+from experiments.utils.word_embeddings import get_emb_layer, get_glove_model, get_ft_model, get_id_from_tokens, _pad_and_get_orig_seq_len, create_vocab_w_idx, get_emb_matrix
 from csv import QUOTE_NONE
 
 # Maxsize of csv field size
@@ -142,23 +142,29 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     train_df = pd.read_csv(base_path / f"train_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     test_df = pd.read_csv(base_path / f"test_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    hold_out_df = pd.read_csv(base_path / f"hold_out_test_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
-    print("Preprocess...")
+    print("Create vocab...")
+    word_to_idx = create_vocab_w_idx(pd.concat([train_df, test_df, hold_out_df], axis=0))
+    vocab_len = len(word_to_idx)
+
+    print("Convert words to ids...")
+
+    train_df["text"] = train_df["text"].map(lambda a: get_id_from_tokens(a, word_to_idx))
+    test_df["text"] = test_df["text"].map(lambda a: get_id_from_tokens(a, word_to_idx))
+    hold_out_df["text"] = hold_out_df["text"].map(lambda a: get_id_from_tokens(a, word_to_idx))
 
 
-    emb_model = None
-    if embedding_type == "glove":
-        size = embedding_dim == 50
-        emb_model = get_glove_model(size)
-    else:
-        emb_model = get_ft_model()
+    print("Create emb matrix")
+    emb_mat = get_emb_matrix(embedding_dim, embedding_type, vocab_len, word_to_index)
 
-    train_df["text"] = train_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
-    test_df["text"] = test_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
+    print("Constructing model...")
+    # Create model
+    model = LSTMTextClassifier(embs=embs, emb_dim=embedding_dim).to(device)
 
-    print("Garbage collect pretrained word emb dict")
-
-    emb_model = None
+    print("Garbage collect vocab dict and emb matrix")
+    word_to_idx = None
+    emb_mat = None
 
     print("Creating datasets...")
 
@@ -172,20 +178,10 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     train_loader = DataLoader(train_set, batch_size=222, shuffle=False, pin_memory=True)
     val_loader = DataLoader(test_set, batch_size=1, shuffle=False, pin_memory=True)
 
-    print("Get emb_layers")
-
-    embs = get_emb_layer(embedding_dim, embedding_type)
-
-    print("Constructing model...")
-
-    # Create model
-    model = LSTMTextClassifier(embs=embs, emb_dim=embedding_dim).to(device)
-
     # Create loss function and optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     print("Find class wts...")
-
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
 
     print(class_wts)
