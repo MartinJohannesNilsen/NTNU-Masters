@@ -12,6 +12,7 @@ from transformers import pipeline, logging
 import os
 from pathlib import Path
 from math import floor
+import numpy as np
 
 cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"
 
@@ -156,12 +157,15 @@ def get_emb_layer(emb_dim, emb_type):
     else:
         path = cache_dir / "wiki.en.vec"
 
-    all_contents = None
-    vocab, embs = [], []
-    with open(path, "rt") as f:
-        all_contents = f.read().strip().split("\n")
+    emb_dict = {}
+    with open(path, "r") as f:
+        for line in f:
+            vals = line.split()
+            word = vals[0]
+            embs = np.asarray(vals[1:], "float32")
+            emb_dict[word] = embs
     
-    for i in range(len(all_contents)):
+    """ for i in range(len(all_contents)):
         word_i = all_contents[i].split(" ")[0]
         emb_i = [float(val) for val in all_contents.split(" ")[1:]]
 
@@ -177,9 +181,10 @@ def get_emb_layer(emb_dim, emb_type):
     pad_emb_np = np.zeros((1, embs_np.shape[1]))
     unk_emb_np = np.mean(embs_np, axis=0, keepdims=True)
 
-    embs_np = np.vstack((pad_emb_np, unk_emb_np, embs_np))
+    embs_np = np.vstack((pad_emb_np, unk_emb_np, embs_np)) """
 
     return embs_np
+
 
 def get_id_from_tokens(tokens, emb_model):
     out_idx = []
