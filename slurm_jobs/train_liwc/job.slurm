@@ -44,7 +44,7 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
+cd "src/experiments/models/train"
 python3 train_sklearn.py $feature_path --model $model
 
 # Print idun stats
