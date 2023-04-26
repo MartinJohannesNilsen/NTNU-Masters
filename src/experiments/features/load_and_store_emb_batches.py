@@ -230,8 +230,8 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, padding = None, purpos
     paddings = [padding] if padding else ["head", "tail", "split"]
 
     emb_model = None
-    if emb_type == "glove":
-        emb_model = get_glove_model(size_small=False)
+    if "glove" in emb_type:
+        emb_model = get_glove_model(size_small=(emb_type == "glove_50"))
     if emb_type == "fasttext":
         emb_model = get_ft_model()
 
@@ -245,10 +245,10 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, padding = None, purpos
                 print(f"Type: {emb_type}, {purpose}, {pad_type}")
                 if purpose == "hold_out":
                     embedding_train_df = dfs[f"{purpose}_{size}"].copy()
-                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{emb_type}_{pad_type}{'_256' if size == '256' else ''}.h5", emb_type, 200, emb_model=emb_model)    
+                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{emb_type}_{pad_type}{'_256' if size == '256' else ''}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
                 else:
                     embedding_train_df = dfs[f"{purpose}{'_no_stair_twitter' if no_stair_twitter else ''}_{size}"].copy()
-                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}{'_256' if size == '256' else ''}.h5", emb_type, 200, emb_model=emb_model)    
+                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}{'_256' if size == '256' else ''}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
                 embedding_train_df = None
             
             else:
@@ -257,107 +257,68 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, padding = None, purpos
                 print(f"Type: {emb_type}, {purpose}, {pad_type}")
                 if purpose == "hold_out":
                     embedding_train_df = dfs[f"{purpose}_512"].copy()
-                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)    
+                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{emb_type}_{pad_type}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
                 else:
                     embedding_train_df = dfs[f"{purpose}{'_no_stair_twitter' if no_stair_twitter else ''}_512"].copy()
-                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)    
+                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
                 embedding_train_df = None
                 
                 # 256
                 print(f"Type: {emb_type}, {purpose}, {pad_type}")
                 if purpose == "hold_out":
                     embedding_train_df = dfs[f"{purpose}_256"].copy()
-                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{emb_type}_{pad_type}_256.h5", emb_type, 200, emb_model=emb_model)    
+                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{emb_type}_{pad_type}_256.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
                 else:
                     embedding_train_df = dfs[f"{purpose}{'_no_stair_twitter' if no_stair_twitter else ''}_256"].copy()
-                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, emb_model=emb_model)    
+                    create_and_store_embeddings(embedding_train_df, out_path / f"{purpose}_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
                 embedding_train_df = None
 
         else:
             # Train
             print(f"Type: {emb_type}, train, {pad_type}")
             embedding_train_df = dfs[f"train{'_no_stair_twitter' if no_stair_twitter else ''}_512"].copy()
-            create_and_store_embeddings(embedding_train_df, out_path / f"train_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)    
+            create_and_store_embeddings(embedding_train_df, out_path / f"train_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)    
             embedding_train_df = None    
 
             print(f"Type: {emb_type}, train 256, {pad_type}")
             embedding_train_df = dfs[f"train{'_no_stair_twitter' if no_stair_twitter else ''}_256"].copy()
-            create_and_store_embeddings(embedding_train_df, out_path / f"train_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)    
+            create_and_store_embeddings(embedding_train_df, out_path / f"train_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, sentence_length=256, emb_model=emb_model)    
             embedding_train_df = None    
 
             # Test
             print(f"Type: {emb_type}, test, {pad_type}")
             embedding_test_df = dfs[f"test{'_no_stair_twitter' if no_stair_twitter else ''}_512"].copy()
-            create_and_store_embeddings(embedding_test_df, out_path / f"test_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)
+            create_and_store_embeddings(embedding_test_df, out_path / f"test_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)
             embedding_test_df = None
 
             print(f"Type: {emb_type}, test 256, {pad_type}")
             embedding_test_df = dfs[f"test{'_no_stair_twitter' if no_stair_twitter else ''}_256"].copy()
-            create_and_store_embeddings(embedding_test_df, out_path / f"test_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)
+            create_and_store_embeddings(embedding_test_df, out_path / f"test_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, sentence_length=256, emb_model=emb_model)
             embedding_test_df = None
 
             # Hold out
             print(f"Type: {emb_type}, hold out, {pad_type}")
             embedding_hold_out_df = dfs["hold_out_512"].copy()
-            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}.h5", emb_type, 200, emb_model=emb_model)
+            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, emb_model=emb_model)
             embedding_hold_out_df = None
 
             print(f"Type: {emb_type}, hold out 256, {pad_type}")
             embedding_hold_out_df = dfs["hold_out_256"].copy()
-            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}_256.h5", emb_type, 200, sentence_length=256, emb_model=emb_model)
-            embedding_hold_out_df = None
-
-
-    if emb_type == "glove":
-        emb_model = get_glove_model()
-
-        for pad_type in paddings:
-
-            # Train
-            print(f"Type: {emb_type}, 50, train, {pad_type}")
-            embedding_train_df = dfs[f"train{'_no_stair_twitter' if no_stair_twitter else ''}_512"].copy()
-            create_and_store_embeddings(embedding_train_df, out_path / f"train_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_dim=50, emb_model=emb_model)    
-            embedding_train_df = None    
-
-            print(f"Type: {emb_type}, 50, train 256, {pad_type}")
-            embedding_train_df = dfs[f"train{'_no_stair_twitter' if no_stair_twitter else ''}_256"].copy()
-            create_and_store_embeddings(embedding_train_df, out_path / f"train_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256, emb_model=emb_model)    
-            embedding_train_df = None    
-
-            # Test
-            print(f"Type: {emb_type}, 50, test, {pad_type}")
-            embedding_test_df = dfs[f"test{'_no_stair_twitter' if no_stair_twitter else ''}_512"].copy()
-            create_and_store_embeddings(embedding_test_df, out_path / f"test_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}.h5", emb_type, 200, emb_dim=50, emb_model=emb_model)
-            embedding_test_df = None
-
-            print(f"Type: {emb_type}, 50, test 256, {pad_type}")
-            embedding_test_df = dfs[f"test{'_no_stair_twitter' if no_stair_twitter else ''}_256"].copy()
-            create_and_store_embeddings(embedding_test_df, out_path / f"test_{'no' if no_stair_twitter else 'sliced'}_stair_twitter_{emb_type}_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256, emb_model=emb_model)
-            embedding_test_df = None
-
-            # Hold out
-            print(f"Type: {emb_type}, 50, hold out, {pad_type}")
-            embedding_hold_out_df = dfs["hold_out_512"].copy()
-            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}.h5", emb_type, 200, emb_dim=50, emb_model=emb_model)
-            embedding_hold_out_df = None
-
-            print(f"Type: {emb_type}, 50, hold out 256, {pad_type}")
-            embedding_hold_out_df = dfs["hold_out_256"].copy()
-            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}_256.h5", emb_type, 200, emb_dim=50, sentence_length=256, emb_model=emb_model)
+            create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}_256.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, sentence_length=256, emb_model=emb_model)
             embedding_hold_out_df = None
 
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("--emb", type=click.Choice(["glove", "fasttext", "bert"]), default="glove", help="")
+@click.option("--emb", type=click.Choice(["glove", "glove_50", "fasttext", "bert"]), default="glove", help="")
 @click.option("--padding", type=click.Choice(["head", "tail", "split", None]), default=None, help="")
 @click.option("--purpose", type=click.Choice(["train", "test", "hold_out", None]), default=None, help="")
 @click.option("--size", type=click.Choice(["512", "256", None]), default=None, help="")
-@click.option("--no-stair-twitter", isFlag=True, default=True, help="")
-def main(emb_type, padding, purpose, size, no_stair_twitter):
+@click.option("--no-stair-twitter", is_flag=True, help="")
+def main(emb, padding, purpose, size, no_stair_twitter):
     
     dfs = get_dfs()
-    create_and_store_all_embs_of_type(dfs, emb_type=emb_type, padding=padding, purpose=purpose, size=size, no_stair_twitter=no_stair_twitter)
+    create_and_store_all_embs_of_type(dfs, emb_type=emb, padding=padding, purpose=purpose, size=size, no_stair_twitter=no_stair_twitter)
 
 if __name__ == "__main__":
     main()

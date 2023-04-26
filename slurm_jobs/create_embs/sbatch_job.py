@@ -1,6 +1,6 @@
-from sys import subprocess
+import subprocess
 
-embeddings = ["glove", "fasttext", "bert"]
+embeddings = ["glove", "glove_50", "fasttext", "bert"]
 paddings = ["head", "tail", "split"]
 purposes = ["train", "test", "hold_out"]
 sizes = ["512", "256"]
