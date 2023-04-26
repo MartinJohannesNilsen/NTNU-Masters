@@ -45,6 +45,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/features"
+# python3 load_and_store_emb_batches.py --emb $emb --padding $padding --purpose $purpose --size $size
 python3 load_and_store_emb_batches.py --no-stair-twitter --emb $emb --padding $padding --purpose $purpose --size $size
 
 # Print idun stats
