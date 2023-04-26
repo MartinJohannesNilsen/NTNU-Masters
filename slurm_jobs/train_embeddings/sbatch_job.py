@@ -5,7 +5,7 @@ from pathlib import Path
 models = ["svm", "nb", "knn", "xgboost", "gaussian"]
 embeddings = ["glove", "glove_50", "fasttext", "bert"]
 paddings = ["head", "tail", "split"]
-variations = ["test_sliced_stair_twitter", "test_no_stair_twitter"]
+variations = ["train_sliced_stair_twitter", "train_no_stair_twitter"]
 # variations = ["hold_out"]
 sizes = ["512", "256"]
 
