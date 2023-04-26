@@ -217,7 +217,9 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
     emb_type: Embedding type to be used
     """
 
-    paddings = ["head", "tail", "split"]
+    ""
+    # paddings = ["head", "tail", "split"]
+    paddings = ["split"]
 
     emb_model = None
     if emb_type == "glove":
@@ -296,8 +298,8 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str):
 
 if __name__ == "__main__":
 
-    train_df = pd.read_csv(data_folder / "train_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")[0:602]
-    test_df = pd.read_csv(data_folder / "test_no_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    train_df = pd.read_csv(data_folder / "train_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")[0:602]
+    test_df = pd.read_csv(data_folder / "test_sliced_stair_twitter.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     hold_out_df = pd.read_csv(data_folder / "shooter_hold_out_test.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     
     embeddings = ["bert"]

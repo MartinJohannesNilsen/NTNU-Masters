@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --job-name=create_bert_embs
 #SBATCH --output=out/create_bert.out
-#SBATCH --mail-user=olejlia@stud.ntnu.no
+#SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
 WORKDIR=${SLURM_SUBMIT_DIR}
