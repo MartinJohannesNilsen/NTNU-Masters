@@ -46,7 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/features"
-python3 create_and_store_glove.py
+python3 load_and_store_emb_batches.py --emb "glove"
 
 # Print idun stats
 uname -a
