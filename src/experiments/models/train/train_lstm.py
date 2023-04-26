@@ -156,6 +156,10 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     train_df["text"] = train_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
     test_df["text"] = test_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
 
+    print("Garbage collect pretrained word emb dict")
+
+    emb_model = None
+
     print("Creating datasets...")
 
     # Creating datasets for use with dataloaders
@@ -170,11 +174,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     print("Get emb_layers")
 
-    embs = get_emb_layer(emb_model)
-    
-    print("Garbage collect pretrained word emb dict")
-
-    emb_model = None
+    embs = get_emb_layer(embedding_dim, embedding_type)
 
     print("Constructing model...")
 
