@@ -17,7 +17,7 @@ for model in models:
             out = f"out/train_liwc/{model}_{train_dataset}_{liwc}.out"
 
             # Python properties
-            feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "h5" / liwc / f"LIWC-22 Results - {train_dataset} - LIWC Analysis.h5")
+            feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "h5" / liwc / f"{train_dataset}.h5")
             
             # Run sbatch
             sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=feature_path={feature_path},model={model} slurm_jobs/train_liwc/job.slurm"

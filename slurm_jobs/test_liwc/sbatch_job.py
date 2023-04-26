@@ -19,8 +19,8 @@ for model in models:
             out = f"out/test_liwc/{model}_{test_dataset}_{liwc}.out"
 
             # Python properties
-            model_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "models" / "saved_models" / model / "liwc" / liwc / f"LIWC-22 Results - {train_dataset} - LIWC Analysis" / "sklearn_model.sav")
-            test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "h5" / liwc / f"LIWC-22 Results - {test_dataset} - LIWC Analysis.h5")
+            model_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "models" / "saved_models" / model / "liwc" / liwc / f"{train_dataset}" / "sklearn_model.sav")
+            test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "h5" / liwc / f"{test_dataset}.h5")
             out_path = f"out/test_liwc/{model}_{test_dataset}_{liwc}_posts.out"
             
             # Run sbatch
