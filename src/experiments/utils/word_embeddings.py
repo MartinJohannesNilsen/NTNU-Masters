@@ -96,6 +96,7 @@ def _tokenize_with_preprocessing(text: str, remove_url: bool = True):
             word = re.sub(r'http+|www+', url_replacement, word) # Replace urls with chosen string or remove completely
             word = re.sub(r'@[^ ]+', '', word) # Remove usernames in the context of Twitter posts
             word = re.sub(r'#', '', word) # Remove hashtags and keep words
+            #word = re.sub(r'[^a-zA-Z0-9\s]', '', word) # ADDED AFTER WE MADE EMBS!!!!! Remove more special chars
             word = re.sub(r'([A-Za-z])\1{2,}', r'\1', word) # Character normalization, prevent words with letters repeated more than twice
 
             if word != "":
@@ -158,7 +159,7 @@ def get_emb_layer(emb_dim, emb_type):
         path = cache_dir / "wiki.en.vec"
 
     emb_dict = {}
-    with open(path, "r") as f:
+    with open(path, "r+", encoding="utf-8") as f:
         for line in f:
             vals = line.split()
             word = vals[0]
@@ -183,7 +184,7 @@ def get_emb_layer(emb_dim, emb_type):
 
     embs_np = np.vstack((pad_emb_np, unk_emb_np, embs_np)) """
 
-    return embs_np
+    return emb_dict
 
 
 def get_id_from_tokens(tokens, emb_model):
