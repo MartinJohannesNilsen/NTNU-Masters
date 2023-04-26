@@ -4,8 +4,7 @@ from pathlib import Path
 
 
 # TODO Select train and test dataset
-train_datasets = ["test_sliced_stair_twitter", "test_no_stair_twitter"]
-# train_datasets = ["shooter_hold_out_test"]
+train_datasets = ["train_sliced_stair_twitter", "train_no_stair_twitter"]
 
 models = ["svm", "nb", "knn", "xgboost", "gaussian"]
 liwc_dictionaries = ["2022", "2015", "2007", "2001"]
