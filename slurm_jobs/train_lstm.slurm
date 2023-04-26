@@ -1,17 +1,17 @@
 #!/bin/sh
-##SBATCH --partition=GPUQ
+#SBATCH --partition=GPUQ
 ##SBATCH --partition=CPUQ
-#SBATCH --partition=short
+##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=48:00:00
+#SBATCH --time=3:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=train_lstm_short
-#SBATCH --output=out/train_lstm_short.out
+#SBATCH --job-name=train_lstm
+#SBATCH --output=out/train_lstm.out
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
@@ -38,7 +38,7 @@ echo "Creating conda environment"
 conda create --force --name env
 echo "Activating conda environment"
 conda activate env
-echo "Pip install requirements"
+echo "tits"
 pip install -r requirements.txt --user -q
 
 # Run code

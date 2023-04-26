@@ -144,21 +144,32 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     # Read data
     base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test_preprocessed"
 
+    print(f"Fetching data from {base_path}")
+
     sent_len_str = "" if sentence_length == 512 else f"_{sentence_length}"
 
+    print("Fetching...")
 
     train_df = pd.read_csv(base_path / f"train_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     test_df = pd.read_csv(base_path / f"test_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+
+    print("Getting emb layer...")
 
     # Creating datasets for use with dataloaders
     train_set = TextDataset(train_df, emb_type=embedding_type, emb_dim=embedding_dim)
     test_set = TextDataset(test_df, emb_type=embedding_type, emb_dim=embedding_dim)
 
+    print("Constructing dataloaders...")
+
     # Load dataset
     train_loader = DataLoader(train_set, batch_size=222, shuffle=False, pin_memory=True)
     val_loader = DataLoader(test_set, batch_size=1, shuffle=False, pin_memory=True)
 
-    vocab, embs = get_vocab_embs(embedding_dim, embedding_type)
+    print("Getting emb layer...")
+
+    embs = get_emb_layer(embedding_dim, embedding_type)
+
+    print("Constructing model...")
 
     # Create model
     model = LSTMTextClassifier(embs=embs, vocab=vocab, emb_dim=embedding_dim).to(device)
@@ -168,7 +179,6 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
 
-    # Run epoch of 
     def run_epoch():
         running_loss = 0.
         last_loss = 0.
@@ -229,6 +239,8 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     ) """
    
     metrics = {}
+
+    print("Start training...")
 
     for epoch in range(EPOCHS):
         print(f'EPOCH {epoch + 1}:')
