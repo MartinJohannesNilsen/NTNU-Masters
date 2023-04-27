@@ -57,7 +57,7 @@ class TextDataset(Dataset):
 
     def get_class_weights(self):
         total_texts = self.__len__()
-        num_shooter_texts, num_non_shooter_texts = self.df["label"].value_counts()
+        num_non_shooter_texts, num_shooter_texts = self.df["label"].value_counts()
 
         print(f"Value counts:\n{self.df['label'].value_counts()}")
 
@@ -129,9 +129,10 @@ class LSTMTextClassifier(nn.Module):
         out_dropped = self.dropout(out_reduced) # Dropout layer
 
         logit = self.fc(out_dropped)
-        logit = torch.squeeze(logit, 1)
+        #logit = torch.squeeze(logit, 1)
 
         pred = self.sig(logit)
+        #print(f"pred dim: {pred.shape}")
 
         return pred
 
@@ -152,8 +153,18 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     print("Fetching...")
 
     train_df = pd.read_csv(base_path / f"train_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    shooter_sampled = train_df[train_df["label"] == 1].sample(frac=0.2, random_state=1)
+    non_shooter_sampled = train_df[train_df["label"] == 0].sample(frac=0.2, random_state=1)
+
+    print(f"shooters sampled: {len(shooter_sampled.index)}\nnon shooters sampled: {len(non_shooter_sampled.index)}")
+
+    val_df = pd.concat([shooter_sampled, non_shooter_sampled], axis=0)
+    train_df.drop(index=val_df.index, inplace=True)
+
     test_df = pd.read_csv(base_path / f"test_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     hold_out_df = pd.read_csv(base_path / f"shooter_hold_out_test{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+
+    print(f"len train: {len(train_df.index)}")
 
     print("Create vocab...")
     word_to_idx = create_vocab_w_idx(pd.concat([train_df, test_df, hold_out_df], axis=0))
@@ -164,8 +175,10 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     print("Convert words to ids and pad...")
 
     train_df["text"] = train_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
-    test_df["text"] = test_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
+    val_df["text"] = val_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
+    """ test_df["text"] = test_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
     hold_out_df["text"] = hold_out_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
+    """
 
     print("Create emb matrix")
     emb_mat = get_emb_matrix(embedding_dim, embedding_type, vocab_len, word_to_idx)
@@ -182,13 +195,13 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     # Creating datasets for use with dataloaders
     train_set = TextDataset(train_df)
-    test_set = TextDataset(test_df)
+    val_set = TextDataset(val_df)
 
     print("Constructing dataloaders...")
 
     # Load dataset
-    train_loader = DataLoader(train_set, batch_size=222, shuffle=False, pin_memory=True)
-    val_loader = DataLoader(test_set, batch_size=1, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=False, pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create loss function and optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
@@ -203,7 +216,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
         for i, data in enumerate(train_loader):
             inputs, labels, lengths = data
-            #labels = labels.to(torch.int32)
+            labels = labels.to(torch.int32)
             #inputs = torch.from_numpy(inputs)
             #lengths = inputs.to(torch.int32)
             #inputs.to(device)
@@ -222,9 +235,22 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
                 else:
                     weighting.append(class_wts[1])
 
+            #weighting = np.array(weighting).reshape((32,))
+
+            print(f"wts: {weighting}")
+            #print(f"wts shape: {weighting.shape}")
+
+
             loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
 
-            loss = loss_fn(outputs.squeeze(), labels.to(torch.float32)) # Unsqueeze target tensor to allow for batching and same dims for out and target
+            labels = torch.tensor(np.array(labels), dtype=torch.float32)
+            #print(f"pred_labels: {outputs}")
+            print(f"pred_labels shape: {outputs.shape}")
+            #print(f"labels: {labels}")
+            print(f"labels shape: {labels.shape}")
+
+
+            loss = loss_fn(outputs.squeeze(dim=1), labels) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
 
             optimizer.step()
@@ -278,28 +304,28 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         running_vloss = 0.0
         for i, vdata in enumerate(val_loader):
             vinputs, vlabels, vlengths = vdata
-            voutputs = model(vinputs, vlengths)
+            v_out = model(vinputs, vlengths)
 
-            [true_vlabels.append(l) for l in vlabels]
-            [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+            print(v_out)
+            print(v_out[0])
+
+            [true_vlabels.append(vlabel) for vlabel in vlabels]
+            [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in v_out[0]]
             
-            weighting = []
-            for vl in vlabels:
-                if vl == 0:
-                    weighting.append(class_wts[0])
-                else:
-                    weighting.append(class_wts[1])
+            weighting = [class_wts[l] for l in vlabels]
+
+            vlabels = torch.tensor(np.array(vlabels), dtype=torch.float32)
 
             loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
-            vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
+            vloss = loss_fn(v_out.squeeze(dim=1), vlabels)
             running_vloss += vloss
 
         avg_vloss = running_vloss / (i + 1)
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
 
         metrics[epoch] = get_metrics(pred_vlabels, true_vlabels)
-        matrics[epoch]["train_loss"] = avg_loss
-        matrics[epoch]["val_loss"] = avg_vloss
+        metrics[epoch]["train_loss"] = avg_loss
+        metrics[epoch]["val_loss"] = avg_vloss
         print(metrics[epoch])
         
         #wandb.log({"avg_eloss": avg_loss, "avg_vloss": avg_vloss})
@@ -395,4 +421,4 @@ def main(path):
         train_liwc(path, liwc_dict) """
 
 if __name__ == "__main__":
-    train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=50)
+    train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=300)

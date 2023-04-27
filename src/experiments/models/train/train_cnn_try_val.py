@@ -20,6 +20,7 @@ import numpy as np
 from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
 import click
+import pandas as pd
 
 # Maxsize of csv field size
 def _find_field_size_limit():
@@ -34,20 +35,20 @@ def _find_field_size_limit():
 
 
 class TextDataset(Dataset):
-    def __init__(self, data_path):
-        self.data_path = data_path
-        self.file = h5py.File(self.data_path, "r")
-        self.data_len = self.file["idx"].shape[0]
+    def __init__(self, fpath, indices):
+        self.file = h5py.File(fpath, "r")
+        self.indices = indices
         #print(f"Data length: {self.data_len}")
 
 
     def __len__(self):
-        return self.data_len
+        return len(self.indices)
 
 
     def __getitem__(self, idx):
-        features = torch.from_numpy(self.file["emb_tensor"][idx])
-        labels = self.file["label"][idx]
+        valid_idx = self.indices[idx]
+        features = torch.from_numpy(self.file["emb_tensor"][valid_idx])
+        labels = self.file["label"][valid_idx]
 
         return features, labels
     
@@ -144,15 +145,33 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
 
     train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
-
+    train_entries = None
+    with h5py.File(train_path, "r") as f:
+        train_index = f["idx"]
+        train_labels = f["label"]
+        train_entries = pd.DataFrame({"idx": train_index, "label": train_labels})
     
+    shooter_sampled = train_entries[train_entries["label"] == 1].sample(frac=0.2, random_state=1)
+    non_shooter_sampled = train_entries[train_entries["label"] == 0].sample(frac=0.2, random_state=1)
+
+    print(f"shooter_samples: {shooter_sampled}")
+    print(f"non_shooter_samples: {non_shooter_sampled}")
+
+
+    val_set =  pd.concat([shooter_sampled, non_shooter_sampled], axis=0)
+    drop_idx = shooter_sampled.index.tolist() + non_shooter_sampled.index.tolist()
+    train_entries = train_entries.drop(index=drop_idx)
+    
+    print(f"val_indexes: {val_set.index.tolist()}")
+    print(f"train_indexes: {train_entries.index.tolist()}")
+
 
 
     val_path = base_path / f"test_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
 
     # Creating datasets for use with dataloaders
-    train_set = TextDataset(train_path)
-    val_set = TextDataset(val_path)
+    train_set = TextDataset(train_path, train_entries.index.tolist())
+    val_set = TextDataset(train_path, val_set.index.tolist())
 
     # Load dataset
     train_loader = DataLoader(train_set, batch_size=64, shuffle=False, pin_memory=True)

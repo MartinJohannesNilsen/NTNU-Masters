@@ -1,29 +1,26 @@
-from sys import subprocess
+import subprocess
 
 emb_types = ["glove", "fasttext", "bert"]
+pad_pos = ["head", "tail", "split"]
 
 lengths = [256, 512]
 
+emb_dict = {
+    "bert": [768],
+    "fasttext": [300],
+    "glove": [50, 300]
+}
+
 for emb in emb_types:
-    
-    emb_str = ""
-    sentence_length_str = ""
-    emb_dim = 300
+        
+    emb_dims = emb_dict[emb]
 
     for l in lengths:
-
-        if emb == "glove":
-            emb_dims = [50, 300]
-
+        for pos in pad_pos:
             for dim in emb_dims:
-                job_name = f"cnn_{emb}_{dim}_{l}_train"
-                sbatch_cmd = f"sbatch --export=model_hash={hash_value['model_hash']},weights={hash_value['weights']},path={path} --job-name={job_name} train_cnn.slurm"
+                job_name = f"cnn_{emb}_{dim}_{l}_{pos}_train"
+                sbatch_cmd = f"sbatch --export=emb={emb},dim={dim},pad_pos={pos},length={l} --job-name={job_name} --output=out/cnn_train/{job_name}.out slurm_jobs/train_cnn.slurm"
+
+                subprocess.call(sbatch_cmd.split())
 
 
-
-
-# Define the command to run the sbatch job with the hash value
-sbatch_cmd = f"sbatch --export=model_hash={hash_value['model_hash']},weights={hash_value['weights']},start_epoch={hash_value['max_epoch']},path={path} --job-name={hash_value['model_hash']} --output=output/{hash_value['model_hash']}.out --constraint={hash_value['constraint']} zzz_slurm/job.slurm"
-# print(sbatch_cmd)
-# Submit the sbatch job using subprocess
-subprocess.call(sbatch_cmd.split())

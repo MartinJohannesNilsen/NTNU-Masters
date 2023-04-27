@@ -1,9 +1,9 @@
 #!/bin/sh
-#SBATCH --partition=GPUQ
+##SBATCH --partition=GPUQ
 ##SBATCH --partition=CPUQ
-##SBATCH --partition=short
+#SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=3:00:00
+#SBATCH --time=24:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="V100"
