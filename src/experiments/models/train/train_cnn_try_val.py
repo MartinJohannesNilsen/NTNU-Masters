@@ -68,9 +68,6 @@ class TextDataset(Dataset):
         return [non_shooter_wt, shooter_wt]
 
 
-
-
-
 class TextClassifier(nn.Module):
     def __init__(self, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
         super(TextClassifier, self).__init__()
@@ -158,7 +155,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     print(f"non_shooter_samples: {non_shooter_sampled}")
 
 
-    val_set =  pd.concat([shooter_sampled, non_shooter_sampled], axis=0)
+    val_set = pd.concat([shooter_sampled, non_shooter_sampled], axis=0)
     drop_idx = shooter_sampled.index.tolist() + non_shooter_sampled.index.tolist()
     train_entries = train_entries.drop(index=drop_idx)
     
@@ -174,7 +171,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     val_set = TextDataset(train_path, val_set.index.tolist())
 
     # Load dataset
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=False, pin_memory=True)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create model
@@ -276,7 +273,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
             loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
             vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
-            running_vloss += vloss
+            running_vloss += vloss.item()
 
         avg_vloss = running_vloss / (i + 1)
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
@@ -300,7 +297,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     all = []
     for k, v in metrics.items():
         out = [k]
-        for metric in v.values()[:-2]:
+        for metric in list(v.values())[:-2]:
             out.append(round(metric, 3)) if metric else out.append(None)
         all.append(out)
 

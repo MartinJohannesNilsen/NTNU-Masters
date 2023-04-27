@@ -1,8 +1,8 @@
 Information
-ID: 18051090
+ID: 18051485
 Name: name
 Directory: /cluster/home/olejlia/NTNU-Masters
-Nodes: idun-05-08
+Nodes: idun-05-12
 Number of nodes: 1
 Cores: 1
 Cores per node: 1
@@ -39,4 +39,4 @@ Usage: train_cnn.py [OPTIONS]
 Try 'train_cnn.py --help' for help.
 
 Error: Invalid value for '-e' / '--emb': '--dim' is not one of 'fasttext', 'glove', 'bert'.
-Linux idun-05-08 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
+Linux idun-05-12 4.18.0-425.3.1.el8.x86_64 #1 SMP Wed Nov 9 20:13:27 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux

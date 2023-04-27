@@ -46,7 +46,7 @@ pip install -r requirements.txt --user -q
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_cnn_try_val.py --emb $emb --dim $dim --length $length --pad_pos $pad_pos
+python3 train_cnn.py --emb $emb --dim $dim --length $length --pad_pos $pad_pos
 
 # Print idun stats
 uname -a

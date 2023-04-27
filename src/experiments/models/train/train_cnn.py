@@ -122,6 +122,7 @@ class TextClassifier(nn.Module):
 
         # Compute logits. Output shape: (b, n_classes)
         out = self.fc(self.dropout(x_fc))
+        print(f"out_sz: {out.size()}")
 
         #print(f"output after dropout={0.5} and fc layer: {out}")
 
@@ -162,14 +163,13 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     model = TextClassifier(emb_dim=embedding_dim).to(device)
 
     # Create loss function and optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
 
     # Run epoch of 
     def run_epoch():
         running_loss = 0.
-        last_loss = 0.
 
         for i, data in enumerate(train_loader):
             inputs, labels = data
@@ -199,11 +199,8 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
             running_loss += loss.item()
             
             # Update reported loss values every 50 steps
-            if i % 50 == 49:
-                last_loss = running_loss / 50
-                running_loss = 0.
             
-        return last_loss
+        return running_loss/len(train_loader)
 
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -259,7 +256,8 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
             vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
             running_vloss += vloss
 
-        avg_vloss = running_vloss / (i + 1)
+        avg_vloss = running_vloss/len(val_loader)
+
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
 
         metrics[epoch] = get_metrics(pred_vlabels, true_vlabels)
@@ -281,7 +279,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     all = []
     for k, v in metrics.items():
         out = [k]
-        for metric in v.values()[:-2]:
+        for metric in list(v.values())[:-2]:
             out.append(round(metric, 3)) if metric else out.append(None)
         all.append(out)
 
