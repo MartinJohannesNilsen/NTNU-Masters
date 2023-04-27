@@ -15,9 +15,9 @@ from experiments.features.load_and_store_emb_batches import read_h5
 # Models
 from sklearn.svm import SVC, SVR
 from sklearn.naive_bayes import GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsRegressor
 from xgboost import XGBRegressor
-from sklearn.gaussian_process import kernels, GaussianProcessClassifier
+from sklearn.gaussian_process import kernels, GaussianProcessRegressor
 
 
 # Training utitilites
@@ -27,7 +27,7 @@ def _get_model(model = "xgboost"):
     elif model == "nb":
         return GaussianNB()
     elif model == "knn":
-        return KNeighborsClassifier(n_neighbors = 5)
+        return KNeighborsRegressor(n_neighbors = 5)
     elif model == "xgboost":
         return XGBRegressor()
     elif model == "gaussian":
@@ -36,7 +36,7 @@ def _get_model(model = "xgboost"):
             "rq": kernels.RationalQuadratic(),
             "white": kernels.WhiteKernel()
             }
-        return GaussianProcessClassifier(kernel=k["white"], n_restarts_optimizer=5)
+        return GaussianProcessRegressor(kernel=k["white"], n_restarts_optimizer=5)
     else:
         raise NotImplementedError()
 

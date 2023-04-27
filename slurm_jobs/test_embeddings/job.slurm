@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=model_path,test_path,output
+#SBATCH --export=model_path,test_path,output_path
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -49,8 +49,7 @@ cd "src/experiments/models/test"
 # Run for loop of thresholds
 for i in $(seq 0 0.05 1)
 do
-    echo "Threshold = $i"
-    python test_sklearn.py $model_path $test_path --threshold $i --output $output
+    python test_sklearn.py $model_path $test_path --threshold $i --output $output_path
 done
 
 # Print idun stats

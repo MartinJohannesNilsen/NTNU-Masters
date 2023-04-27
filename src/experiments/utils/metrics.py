@@ -16,7 +16,12 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
     
     # Gather performance metrics
     tn, fp, fn, tp = confusion_matrix(labels, predictions, labels=[0, 1]).ravel()
-    precision, recall, fscore, _ = precision_recall_fscore_support(labels, predictions, average="macro", zero_division=0)
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    precision = (tp) / (tp + fp)
+    recall = (tp) / (tp + fn)
+    specificity = (tn) / (tn + fp)
+    fscore = 2 * (precision * recall) / (precision + recall)
+    
     try:
         roc_auc = roc_auc_score(labels, predictions)
     except:
@@ -28,10 +33,10 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
         "fp": fp,
         "fn": fn,
         "tp": tp,
-        "accuracy": (tp+tn)/(tp+fp+fn+tn),
+        "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
-        "specificity": tn / (tn + fp),
+        "specificity": specificity,
         "f1_score": fscore,
         "roc_auc": roc_auc
     }

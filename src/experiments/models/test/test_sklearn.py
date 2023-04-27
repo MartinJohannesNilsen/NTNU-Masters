@@ -82,6 +82,8 @@ def get_texts_liwc(liwc_features_path) -> List[str]:
     features = pd.read_csv(liwc_features_path)
     return features["text"].to_list()
 
+def sigmoid_function(x):
+    return 1.0 / (1.0 + np.exp(-x))
 
 click.option = partial(click.option, show_default=True)
 @click.command()
@@ -92,6 +94,8 @@ click.option = partial(click.option, show_default=True)
 def main(model_path, test_path, threshold, output):
     assert threshold >= 0 and threshold <= 1, "Threshold needs to be between 0 and 1!"
 
+    print(f"Threshold = {threshold}")
+
     # Check that paths leads to files
     assert os.path.isfile(model_path), "No model file found!"
     assert os.path.isfile(test_path), "No test file found!"
@@ -99,7 +103,8 @@ def main(model_path, test_path, threshold, output):
     if "embeddings" in model_path:
         assert "embeddings" in test_path, "Mismatch between model and test embeddings path!"
         y_pred, y_true = test_embeddings(model_path, test_path)
-        out = [1 if pred > threshold else 0 for pred in y_pred]
+        y_pred_sigmoid = [sigmoid_function(pred) for pred in y_pred]
+        out = [1 if pred > threshold else 0 for pred in y_pred_sigmoid]
         stats = get_metrics(out, y_true)
         print_metrics_comprehensive(stats)
         if output:
@@ -111,6 +116,7 @@ def main(model_path, test_path, threshold, output):
             # Write to output file
             os.makedirs(os.path.dirname(output), exist_ok=True)
             with open(output, "w") as f:
+                f.write(f"{'%'*20}\nThreshold = {threshold}\n{'%'*20}\n")
                 for k, v in post_dict.items():
                     f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
                     f.writelines(line + "\n" for line in v)
@@ -119,7 +125,11 @@ def main(model_path, test_path, threshold, output):
     elif "liwc" in model_path:
         assert "liwc" in test_path, "Mismatch between model and test LIWC dictionaries path!"
         y_pred, y_true = test_liwc(model_path, test_path)
-        out = [1 if pred > threshold else 0 for pred in y_pred]
+        y_pred_sigmoid = [sigmoid_function(pred) for pred in y_pred]
+        # for pred in y_pred:
+        #     if pred > 1 or pred < 0:
+        #         print(pred)
+        out = [1 if pred > threshold else 0 for pred in y_pred_sigmoid]
         stats = get_metrics(out, y_true)
         print_metrics_comprehensive(stats)
         if output:
@@ -131,11 +141,11 @@ def main(model_path, test_path, threshold, output):
             # Write to output file
             os.makedirs(os.path.dirname(output), exist_ok=True)
             with open(output, "w") as f:
+                f.write(f"{'%'*20}\nThreshold = {threshold}\n{'%'*20}\n")
                 for k, v in post_dict.items():
-                    f.writelines(k)
-                    for line in v:
-                        f.writelines(line)
-                    f.writelines("")
+                    f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
+                    f.writelines(line + "\n" for line in v)
+                    f.writelines("\n")
 
 
 
