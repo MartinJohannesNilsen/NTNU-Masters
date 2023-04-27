@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, Dataset
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence, pack_sequence
 from datetime import datetime
 import wandb
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -21,7 +21,7 @@ import h5py
 import numpy as np
 from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
-from experiments.utils.word_embeddings import get_emb_layer, get_glove_model, get_ft_model, get_id_from_tokens, _pad_and_get_orig_seq_len
+from experiments.utils.word_embeddings import get_padded_ids, create_vocab_w_idx, get_emb_matrix
 from csv import QUOTE_NONE
 
 # Maxsize of csv field size
@@ -46,11 +46,13 @@ class TextDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        tokens = row["text"]
-        label = row["label"]
+        row = self.df.iloc[idx].values
+        tokens, length = row[1]
+        label = row[3]
 
-        return tokens, label, len(tokens)
+        #print(f"tokens: {tokens.shape}\nlabel: {label.shape}")
+
+        return tokens, label, length
     
 
     def get_class_weights(self):
@@ -72,10 +74,11 @@ class LSTMTextClassifier(nn.Module):
         super(LSTMTextClassifier, self).__init__()
 
         self.embedding = nn.Embedding.from_pretrained(torch.from_numpy(embs).float())
+        self.embedding.weight.requires_grad = False
 
         self.hidden_size = hidden_size
 
-        self.lstm = nn.LSTM(sentence_len, hidden_size, num_layers, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(emb_dim, hidden_size, num_layers, batch_first=True, bidirectional=True)
 
         self.fc = nn.Linear(2*hidden_size, 1)
         self.dropout = nn.Dropout(p=dropout)
@@ -103,13 +106,21 @@ class LSTMTextClassifier(nn.Module):
 
 
         embs = self.embedding(x)
+        """ print(f"embs:\n{embs.shape}")
+        print(f"length:{length.shape}") """
 
         #padded_embs = pad_sequence(embs, batch_first=True)
 
         packed_input = pack_padded_sequence(embs, length, batch_first=True, enforce_sorted=False)
+        #print(f"packed input: {packed_input}")
+
         packed_out, _ = self.lstm(packed_input)
+        #print(f"packed output: {packed_out}")
+
 
         out, _ = pad_packed_sequence(packed_out, batch_first=True)
+        #print(f"out: {out}")
+
 
         out_forward = out[range(len(out)), length - 1, :self.hidden_size] # Forward dependencies
         out_backwards = out[:, 0, self.hidden_size:] # Backward dependencies
@@ -142,23 +153,30 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     train_df = pd.read_csv(base_path / f"train_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
     test_df = pd.read_csv(base_path / f"test_sliced_stair_twitter{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    hold_out_df = pd.read_csv(base_path / f"shooter_hold_out_test{sent_len_str}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
 
-    print("Preprocess...")
+    print("Create vocab...")
+    word_to_idx = create_vocab_w_idx(pd.concat([train_df, test_df, hold_out_df], axis=0))
+    vocab_len = len(word_to_idx)
 
+    
 
-    emb_model = None
-    if embedding_type == "glove":
-        size = embedding_dim == 50
-        emb_model = get_glove_model(size)
-    else:
-        emb_model = get_ft_model()
+    print("Convert words to ids and pad...")
 
-    train_df["text"] = train_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
-    test_df["text"] = test_df["text"].map(lambda a: get_id_from_tokens(a, emb_model))
+    train_df["text"] = train_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
+    test_df["text"] = test_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
+    hold_out_df["text"] = hold_out_df["text"].map(lambda a: get_padded_ids(a, word_to_idx, pad_pos, sentence_length))
 
-    print("Garbage collect pretrained word emb dict")
+    print("Create emb matrix")
+    emb_mat = get_emb_matrix(embedding_dim, embedding_type, vocab_len, word_to_idx)
 
-    emb_model = None
+    print("Constructing model...")
+    # Create model
+    model = LSTMTextClassifier(embs=emb_mat, emb_dim=embedding_dim).to(device)
+
+    print("Garbage collect vocab dict and emb matrix")
+    word_to_idx = None
+    emb_mat = None
 
     print("Creating datasets...")
 
@@ -172,23 +190,11 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     train_loader = DataLoader(train_set, batch_size=222, shuffle=False, pin_memory=True)
     val_loader = DataLoader(test_set, batch_size=1, shuffle=False, pin_memory=True)
 
-    print("Get emb_layers")
-
-    embs = get_emb_layer(embedding_dim, embedding_type)
-
-    print("Constructing model...")
-
-    # Create model
-    model = LSTMTextClassifier(embs=embs, emb_dim=embedding_dim).to(device)
-
     # Create loss function and optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     print("Find class wts...")
-
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
-
-    print(class_wts)
 
 
     def run_epoch():
@@ -197,10 +203,12 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
         for i, data in enumerate(train_loader):
             inputs, labels, lengths = data
-            labels = labels.to(torch.float32)
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            lengths = lengths.to(device)
+            #labels = labels.to(torch.int32)
+            #inputs = torch.from_numpy(inputs)
+            #lengths = inputs.to(torch.int32)
+            #inputs.to(device)
+            #labels = labels.to(device)
+            #lengths = lengths.to(device)
             #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
 

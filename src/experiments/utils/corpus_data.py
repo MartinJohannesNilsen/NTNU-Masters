@@ -18,22 +18,22 @@ def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True):
     if not is_preprocessed:
         df["text"] = df["text"].map(lambda a: _tokenize_with_preprocessing(a))
 
+    def split_safe(text):
+        return str(text).split(" ")
+
     counts = {}
-    for row in df["text"]:
-        for word in row[1:-1].split(','):
-            print(word)
+    for row in df["text"].map(lambda a: split_safe(a)):
+        for word in row:
             if word not in counts:
                 counts[word] = 1
             else:
                 counts[word] += 1
 
     # Drop underrepresented words and create vocab
-    vocab = {}
-    i = 0
+    vocab = {'<PAD>': 0, '<UNK>': 1}
     for key in counts.keys():
-        if counts[key] >= 2:
-            vocab[key] = i
-            i += 1
+        if counts[key] >= 3:
+            vocab[key] = len(vocab)
 
     return vocab
 
@@ -49,6 +49,6 @@ if __name__ == "__main__":
     df = pd.concat([df1,df2,df3], axis=0)
     print(df)
 
-    vocab = create_vocab_w_idx(df, is_preprocessed=True)
+    word_2_index = create_vocab_w_idx(df, is_preprocessed=True)
 
-    #print(vocab)
+    print(word_2_index)
