@@ -44,13 +44,13 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
+cd "src/experiments/models/test"
 
 # Run for loop of thresholds
 for i in $(seq 0 0.05 1)
 do
     echo "Threshold = $i"
-    python test_sklearn.py $model_path $test_path --threshold $i --output $output
+    python test_sklearn.py $model_path $test_path --threshold $i --output "$output_$i.out"
 done
 
 # Print idun stats

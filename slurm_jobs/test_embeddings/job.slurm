@@ -44,7 +44,7 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
+cd "src/experiments/models/test"
 
 # Run for loop of thresholds
 for i in $(seq 0 0.05 1)

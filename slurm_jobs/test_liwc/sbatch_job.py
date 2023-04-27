@@ -21,7 +21,7 @@ for model in models:
             # Python properties
             model_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "models" / "saved_models" / model / "liwc" / liwc / f"{train_dataset}" / "sklearn_model.sav")
             test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "h5" / liwc / f"{test_dataset}.h5")
-            out_path = f"out/test_liwc/{model}_{test_dataset}_{liwc}_posts.out"
+            out_path = f"out/test_liwc/{model}_{test_dataset}_{liwc}_posts"
             
             # Run sbatch
             sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model_path={model_path},test_path={test_path},output={out_path} slurm_jobs/test_liwc/job.slurm"

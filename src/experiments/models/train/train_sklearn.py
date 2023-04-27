@@ -140,7 +140,7 @@ def _embedding(path, emb_type, model, batch_size = None, cross_validation_splits
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
 def _liwc(path, liwc_dict, model, batch_size = None, cross_validation_splits: int = None):
     assert liwc_dict in SUPPORTED_LIWC_DICTS, "LIWC dictionary version not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / f'{liwc_dict}' / Path(path).stem, path=path, model_type=model, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / liwc_dict / Path(path).stem, path=path, model_type=model, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
 
 
 # Training based on selected feature
@@ -183,7 +183,7 @@ def main(path, model):
         assert emb_type, "Incorrect format, could not find embedding!"
         train_embeddings(path, emb_type, model)
         
-    elif "LIWC" in path:
+    elif "liwc" in path:
         # Find liwc_dict
         liwc_dict = None
         if "2022" in path:

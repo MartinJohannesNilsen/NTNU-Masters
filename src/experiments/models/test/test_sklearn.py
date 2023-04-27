@@ -87,7 +87,7 @@ click.option = partial(click.option, show_default=True)
 @click.command()
 @click.argument("model_path", nargs=1)
 @click.argument("test_path", nargs=1)
-@click.option("-t", "--threshold", type=int, default=0.5, help="Threshold for predictions")
+@click.option("-t", "--threshold", type=float, default=0.5, help="Threshold for predictions")
 @click.option("-o", "--output", type=str, help="Output posts grouped by confusion matrix to file")
 def main(model_path, test_path, threshold, output):
     assert threshold >= 0 and threshold <= 1, "Threshold needs to be between 0 and 1!"
