@@ -71,7 +71,7 @@ class TextDataset(Dataset):
 
 
 class TextClassifier(nn.Module):
-    def __init__(self, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
+    def __init__(self, emb_dim: int = 300, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
         super(TextClassifier, self).__init__()
 
         self.conv1d_list = nn.ModuleList([
@@ -117,12 +117,13 @@ class TextClassifier(nn.Module):
         # Output shape: (b, sum(num_filters))
         x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
                          dim=1)
-        
+        #print(f"x_fc: {x_fc.size()}")
+
         #print(f"Size after squeeze and flatten: {x_fc.size()}")
 
         # Compute logits. Output shape: (b, n_classes)
         out = self.fc(self.dropout(x_fc))
-        print(f"out_sz: {out.size()}")
+        #print(f"fc_sz: {self.fc.size()}")
 
         #print(f"output after dropout={0.5} and fc layer: {out}")
 
@@ -140,15 +141,11 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     # Read data
     base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
 
-    emb_str = f"{embedding_type}" if embedding_dim == 300 else f"{embedding_type}_{embedding_dim}"
+    emb_str = f"{embedding_type}_{embedding_dim}" if embedding_dim == 50 else f"{embedding_type}"
     sent_len_str = "" if sentence_length == 512 else f"_{sentence_length}"
 
 
     train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
-
-    
-
-
     val_path = base_path / f"test_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
 
     # Creating datasets for use with dataloaders
@@ -171,16 +168,14 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     def run_epoch():
         running_loss = 0.
 
-        for i, data in enumerate(train_loader):
+        for _, data in enumerate(train_loader):
             inputs, labels = data
             labels = labels.to(torch.float32)
             inputs = inputs.to(device)
             labels = labels.to(device)
-            #print(f"Shape of input tensor: {inputs.shape}")
-            optimizer.zero_grad()
 
+            optimizer.zero_grad()
             outputs = model(inputs)
-            #print(f"out: {outputs}")
 
             weighting = []
             for l in labels:
@@ -193,13 +188,9 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
             loss = loss_fn(outputs.squeeze(), labels.to(torch.float32)) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
-
             optimizer.step()
-
             running_loss += loss.item()
-            
-            # Update reported loss values every 50 steps
-            
+                        
         return running_loss/len(train_loader)
 
 
@@ -238,7 +229,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         true_vlabels = []
 
         running_vloss = 0.0
-        for i, vdata in enumerate(val_loader):
+        for _, vdata in enumerate(val_loader):
             vinputs, vlabels = vdata
             voutputs = model(vinputs)
 
@@ -254,7 +245,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
             loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
             vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
-            running_vloss += vloss
+            running_vloss += vloss.item()
 
         avg_vloss = running_vloss/len(val_loader)
 
@@ -300,5 +291,4 @@ def main(emb, dim, length, pad_pos):
     train(embedding_type=emb, pad_pos=pad_pos, num_epochs=10, sentence_length=length, embedding_dim=dim)
 
 if __name__ == "__main__":
-    main()
-
+    train(embedding_type="bert", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=756)

@@ -24,6 +24,8 @@ from tabulate import tabulate
 from experiments.utils.word_embeddings import get_padded_ids, create_vocab_w_idx, get_emb_matrix
 from csv import QUOTE_NONE
 
+print(f"device: {device}")
+
 # Maxsize of csv field size
 def _find_field_size_limit():
     max_int = sys.maxsize
@@ -136,11 +138,15 @@ class LSTMTextClassifier(nn.Module):
 
         return pred
 
+def check_mem_usage():
+    print("torch.cuda.memory_allocated: %fMB"%(torch.cuda.memory_allocated(0)/1024/1024))
+    print("torch.cuda.memory_reserved: %fMB"%(torch.cuda.memory_reserved(0)/1024/1024))
+    print("torch.cuda.max_memory_reserved: %fMB"%(torch.cuda.max_memory_reserved(0)/1024/1024))
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(0) 
 
-def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sentence_length: int = 256, embedding_dim: int = 300):
+def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sentence_length: int = 256, embedding_dim: int = 300, batch_size: int = 32):
     # 222
 
     # Read data
@@ -185,7 +191,15 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     print("Constructing model...")
     # Create model
+
+    print("mem usage before constructing model")
+    check_mem_usage()
+
     model = LSTMTextClassifier(embs=emb_mat, emb_dim=embedding_dim).to(device)
+
+    print("mem usage after creating model")
+    check_mem_usage()
+
 
     print("Garbage collect vocab dict and emb matrix")
     word_to_idx = None
@@ -200,11 +214,11 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     print("Constructing dataloaders...")
 
     # Load dataset
-    train_loader = DataLoader(train_set, batch_size=32, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, pin_memory=True)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create loss function and optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     print("Find class wts...")
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
@@ -216,12 +230,9 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
         for i, data in enumerate(train_loader):
             inputs, labels, lengths = data
-            labels = labels.to(torch.int32)
-            #inputs = torch.from_numpy(inputs)
-            #lengths = inputs.to(torch.int32)
-            #inputs.to(device)
-            #labels = labels.to(device)
-            #lengths = lengths.to(device)
+            labels = labels.to(torch.float32).to(device)
+            inputs = torch.from_numpy(np.array(inputs)).to(device)
+
             #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
 
@@ -237,17 +248,16 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
             #weighting = np.array(weighting).reshape((32,))
 
-            print(f"wts: {weighting}")
+            #print(f"wts: {weighting}")
             #print(f"wts shape: {weighting.shape}")
 
+            weighting = torch.tensor(weighting).to(device)
 
-            loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
-
-            labels = torch.tensor(np.array(labels), dtype=torch.float32)
+            loss_fn = nn.BCELoss(weight=weighting)
             #print(f"pred_labels: {outputs}")
-            print(f"pred_labels shape: {outputs.shape}")
+            """ print(f"pred_labels shape: {outputs.shape}")
             #print(f"labels: {labels}")
-            print(f"labels shape: {labels.shape}")
+            print(f"labels shape: {labels.shape}") """
 
 
             loss = loss_fn(outputs.squeeze(dim=1), labels) # Unsqueeze target tensor to allow for batching and same dims for out and target
@@ -289,7 +299,10 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     print("Start training...")
 
     for epoch in range(EPOCHS):
-        print(f'EPOCH {epoch + 1}:')
+        print(f'EPOCH {epoch}:')
+        print(f"mem usage before epoch {epoch}")
+        check_mem_usage()
+
 
         # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
@@ -302,25 +315,31 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         true_vlabels = []
 
         running_vloss = 0.0
+
+        print("validating")
+
         for i, vdata in enumerate(val_loader):
             vinputs, vlabels, vlengths = vdata
+            vinputs = torch.from_numpy(np.array(vinputs)).to(device)
+
             v_out = model(vinputs, vlengths)
 
-            print(v_out)
-            print(v_out[0])
+            """ print(v_out)
+            print(v_out[0]) """
 
             [true_vlabels.append(vlabel) for vlabel in vlabels]
             [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in v_out[0]]
             
             weighting = [class_wts[l] for l in vlabels]
+            weighting = torch.tensor(weighting).to(device)
+            vlabels = vlabels.to(torch.float32).to(device)
 
-            vlabels = torch.tensor(np.array(vlabels), dtype=torch.float32)
 
-            loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
+            loss_fn = nn.BCELoss(weight=weighting)
             vloss = loss_fn(v_out.squeeze(dim=1), vlabels)
-            running_vloss += vloss
+            running_vloss += vloss.item()
 
-        avg_vloss = running_vloss / (i + 1)
+        avg_vloss = running_vloss / len(val_loader)
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
 
         metrics[epoch] = get_metrics(pred_vlabels, true_vlabels)
@@ -342,16 +361,14 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     all_metrics = []
     for k, v in metrics.items():
         out = [k]
-        for metric in v.values():
+        for metric in list(v.values())[:-2]:
             out.append(round(metric, 3)) if metric else out.append(None)
-        all.append(out)
+        all_metrics.append(out)
 
     print(f"RESULTS FOR TRAINING CNN WITH:\nemb type: {embedding_type}\nemb dim: {embedding_dim}\nsentence length: {sentence_length}\npadding pos: {pad_pos}\nbatch size: {222}\n\n\n")
 
     print(tabulate(all_metrics, headers=["Fold", "TN", "FP", "FN", "TP", "Accuracy", "Precision", "Recall", "Specificity", "F1-score", "ROC-AUC", "train_loss", "val_loss"]))
 
-    train_set.file.close()
-    val_set.file.close()
     #wandb.finish()
 
 
@@ -421,4 +438,4 @@ def main(path):
         train_liwc(path, liwc_dict) """
 
 if __name__ == "__main__":
-    train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=300)
+    train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=512, embedding_dim=300)
