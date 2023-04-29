@@ -66,6 +66,21 @@ def _apply_fixed_sentence_length(embedding: torch.tensor, sentence_length: int, 
 
     return embedding
 
+def get_seq_len(seq):
+    """
+    Due to the way embeddings were stored at the beginning of the project, extracting lengths of the individual sequences was deemed necessary
+    """
+    whole_seq_len = len(seq)
+
+    i = 1
+    while i < whole_seq_len:
+        if np.any(seq[-i]): # Start at last element in tensor and work backwards
+            break
+
+        i += 1
+        
+    return whole_seq_len - (i-1)
+
 
 def _tokenize_with_preprocessing(text: str, remove_url: bool = True):
     """For the embedders needing tokenized input. The method perform certain steps of text cleaning:

@@ -21,10 +21,10 @@ for model in models:
                     # Python properties
                     model_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "models" / "saved_models" / model / "embeddings" / emb / f"{variation}_{emb}_{padding}{'_256' if size == '256' else ''}" / "sklearn_model.sav")
                     test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / f"{variation}_{emb}_{padding}{'_256' if size == '256' else ''}.h5")
-                    out_path = f"out/test_embeddings/{model}_{variation}_{emb}_{padding}_{size}_posts.out"
+                    out_path = str(Path(os.path.abspath(__file__)).parents[2] / "out" / "test_liwc" / f"{model}_{variation}_{emb}_{padding}_{size}_posts.out")
                     
                     # Run sbatch
-                    sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model_path={model_path},test_path={test_path},output={out_path} slurm_jobs/test_embeddings/job.slurm"
+                    sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model_path={model_path},test_path={test_path},output_path={out_path} slurm_jobs/test_embeddings/job.slurm"
                     print(sbatch_cmd)
                     subprocess.call(sbatch_cmd.split())
 

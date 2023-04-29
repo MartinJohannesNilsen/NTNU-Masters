@@ -1,18 +1,20 @@
 #!/bin/sh
-#SBATCH --partition=GPUQ
+##SBATCH --partition=GPUQ
 ##SBATCH --partition=CPUQ
-##SBATCH --partition=
+#SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=96:00:00
+#SBATCH --time=1:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
-##SBATCH --constraint="P100|V100"
+##SBATCH --constraint="V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --mail-user=martijni@stud.ntnu.no
+#SBATCH --job-name=hehe
+#SBATCH --output=out/hehe.out
+#SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=feature_path,model
+
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -39,16 +41,11 @@ echo "Activating conda environment"
 conda activate env
 echo "Pip install requirements"
 pip install -r requirements.txt --user -q
-echo "Install nltk stopwords"
-python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "f1"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
-#python3 train_sklearn.py $feature_path --model $model
+python3 hehe.py
 
 # Print idun stats
 uname -a

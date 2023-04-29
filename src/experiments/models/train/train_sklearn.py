@@ -4,8 +4,9 @@ from pathlib import Path
 import click
 import numpy as np
 
-import pickle   
-from sklearn.model_selection import KFold
+import pickle
+from sklearn.metrics import make_scorer, recall_score   
+from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
 from tabulate import tabulate
 import sys
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
@@ -13,30 +14,104 @@ sys.path.append(experiments_dir)
 from experiments.utils.metrics import get_metrics, get_average_metrics
 from experiments.features.load_and_store_emb_batches import read_h5
 # Models
-from sklearn.svm import SVC, SVR
+from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from xgboost import XGBRegressor
+from sklearn.linear_model import SGDClassifier
+from xgboost import XGBClassifier
 from sklearn.gaussian_process import kernels, GaussianProcessClassifier
+from sklearn.metrics import make_scorer, recall_score, f1_score, precision_score
+
+def combined_recall_f1(y_true, y_pred, recall_weight=0.5):
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    return recall_weight * recall + (1 - recall_weight) * f1
+
+"""
+grid_search_params = {
+    "svm" : (SVC(), {
+        'C': np.logspace(-3, 3, 7),
+        'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+        'degree': [2, 3, 4, 5],
+        'gamma': ['scale', 'auto']}),
+    "sgd": (SGDClassifier(), {
+        'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'],
+        'penalty': ['none', 'l1', 'l2', 'elasticnet'],
+        'alpha': np.logspace(-6, 3, 10),
+        'l1_ratio': np.linspace(0, 1, 11),
+        'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
+        'eta0': np.logspace(-4, 0, 5)}),
+    "nb" : (GaussianNB(), {}),
+    "knn": (KNeighborsClassifier(), {
+        'n_neighbors': range(1, 21),
+        'weights': ['uniform', 'distance'],
+        'metric': ['euclidean', 'manhattan', 'minkowski']}),
+    "xgboost": (XGBClassifier(eval_metric='logloss'), {
+        'n_estimators': range(50, 301, 50),
+        'learning_rate': [0.01, 0.05, 0.1, 0.2, 0.3],
+        'max_depth': range(3, 11),
+        'min_child_weight': range(1, 7),
+        'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        'gamma': [0, 0.1, 0.2, 0.3, 0.4, 0.5]}),
+    "gaussian": (GaussianProcessClassifier(), {
+        'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.Matern(), kernels.WhiteKernel()],
+        'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
+        'n_restarts_optimizer': [0, 1, 2, 3, 4],
+        'max_iter_predict': [50, 100, 150, 200]})
+}
+"""
+grid_search_params = {
+    "svm" : (SVC(), {
+        'C': np.logspace(-3, 3, 7),
+        'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+        # 'degree': [2, 3, 4, 5],
+        'gamma': ['scale', 'auto']}),
+    "sgd": (SGDClassifier(), {
+        'loss': ['hinge'],
+        # 'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'],
+        'penalty': ['none', 'l1', 'l2', 'elasticnet'],
+        'alpha': np.logspace(-6, 3, 10),
+        # 'l1_ratio': np.linspace(0, 1, 11),
+        'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
+        # 'eta0': np.logspace(-4, 0, 5)
+        }),
+    "nb" : (GaussianNB(), {}),
+    "knn": (KNeighborsClassifier(), {
+        'n_neighbors': range(1, 21),
+        'weights': ['uniform', 'distance'],
+        'metric': ['euclidean', 'manhattan', 'minkowski']}),
+    "xgboost": (XGBClassifier(eval_metric='logloss'), {
+        'n_estimators': range(50, 301, 50),
+        'learning_rate': [0.01, 0.05, 0.1, 0.2, 0.3],
+        # 'max_depth': range(3, 11),
+        # 'min_child_weight': range(1, 7),
+        # 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        # 'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        'gamma': [0, 0.1, 0.2, 0.3, 0.4, 0.5]}),
+    "gaussian": (GaussianProcessClassifier(), {
+        'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.Matern(), kernels.WhiteKernel()],
+        'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
+        'n_restarts_optimizer': [0, 1, 2, 3, 4],
+        # 'max_iter_predict': [50, 100, 150, 200]
+        })
+}
 
 
 # Training utitilites
 def _get_model(model = "xgboost"):
     if model == "svm":
-        return SVR()
+        return SVC(probability=True)
+    if model == "sgd":
+        return SGDClassifier()
     elif model == "nb":
         return GaussianNB()
     elif model == "knn":
-        return KNeighborsClassifier(n_neighbors = 5)
+        return KNeighborsClassifier(n_neighbors=5, metric='manhattan', weights='distance') # n_neighbors=3 if sliced, 5 if no
     elif model == "xgboost":
-        return XGBRegressor()
+        return XGBClassifier(eval_metric="logloss")
     elif model == "gaussian":
-        k = {
-            "rbf": kernels.RBF(), # Default
-            "rq": kernels.RationalQuadratic(),
-            "white": kernels.WhiteKernel()
-            }
-        return GaussianProcessClassifier(kernel=k["white"], n_restarts_optimizer=5)
+        return GaussianProcessClassifier()
     else:
         raise NotImplementedError()
 
@@ -47,17 +122,17 @@ def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
     pickle.dump(model, open(model_path, 'wb'))
     
     return model_path
-        
 
 # Training
-def training(saved_model_dir, path, model_type, batch_size = None, cross_validation_splits: int = None):
+def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1"):
 
     # Get model
     model = _get_model(model_type)
     
     # Run cross_val if number of splits is defined
-    if cross_validation_splits:
-        assert cross_validation_splits > 1, "n_splits needs to be more than 1!"
+    if grid_search_metric:
+
+        classifier, grid_params = grid_search_params[model_type]
 
         # Read data
         data = read_h5(path)
@@ -66,38 +141,34 @@ def training(saved_model_dir, path, model_type, batch_size = None, cross_validat
         X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
         y = np.array(data["label"])
 
-        # Define the K-fold Cross Validator
-        kfold = KFold(n_splits=cross_validation_splits, shuffle=True)
+        # Split dataaset into 60% sample for grid search if liwc, 10% if embeddings
+        X_sample, _, y_sample, _ = train_test_split(X, y, test_size=0.4 if "liwc" in saved_model_dir else 0.9, random_state=42, stratify=y)
 
-        # K-fold Cross Validation model evaluation
-        fold_no = 1
-        metrics = {}
-        for train, test in kfold.split(X, y):    
-            
-            # Fit the model to data
-            model = _get_model()
-            model.fit(X[train], y[train])
-            
-            # Get preds
-            y_pred = model.predict(X[test])
-            threshold = 0.5
-            preds = [1 if pred > threshold else 0 for pred in y_pred]
-            metrics[f"Fold {fold_no}"] = get_metrics(preds, y[test])
+        # Set up cross-validation
+        cv = StratifiedKFold(n_splits=5)
 
-            fold_no += 1
+        # Define scoring metrics
+        scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'recall_f1': make_scorer(combined_recall_f1, greater_is_better = True), 'precision': make_scorer(precision_score)}
 
-        # Average
-        metrics["Average"] = get_average_metrics(metrics_array=metrics.values())
+        grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1)
+        grid_search.fit(X_sample, y_sample)
 
-        # 2D array for tabulate
-        all = []
-        for k, v in metrics.items():
-            out = [k]
-            for metric in v.values():
-                out.append(round(metric, 3)) if metric else out.append(None)
-            all.append(out)
+        # print("Best parameters:", grid_search.best_params_)
+        # Get the index of the best combination of parameters
+        best_index = grid_search.best_index_
 
-        print(tabulate(all, headers=["Fold", "TN", "FP", "FN", "TP", "Accuracy", "Precision", "Recall", "Specificity", "F1-score", "ROC-AUC"]))
+        # Print the best scores for both metrics
+        print("=" * 80)
+        print("Optimized metric:", grid_search_metric)
+        print("-" * 80)
+        print("Best F1 score:", grid_search.cv_results_['mean_test_f1'][best_index])
+        print("Best Recall score:", grid_search.cv_results_['mean_test_recall'][best_index])
+        print("Best Combined Recall-F1 score:", grid_search.cv_results_['mean_test_recall_f1'][best_index])
+        print("Best Precision score:", grid_search.cv_results_['mean_test_precision'][best_index])
+        print("-" * 80)
+        print("Best params:", grid_search.best_params_)
+        print("Best estimator:", grid_search.best_estimator_)
+        print("=" * 80)
 
     # If regular training
     else:
@@ -114,7 +185,7 @@ def training(saved_model_dir, path, model_type, batch_size = None, cross_validat
                 y = np.array(data["label"])
 
                 # Fit model
-                model.fit(X, y)
+                model.partial_fit(X, y)
         
         else:
             # Read data
@@ -131,40 +202,24 @@ def training(saved_model_dir, path, model_type, batch_size = None, cross_validat
         _save_model(model, saved_model_dir=saved_model_dir)
         
 
-# Helper functions for feature based training
+# Training based on selected feature
 SUPPORTED_EMBEDDINGS = ["glove", "glove_50", "fasttext", "bert"]
-def _embedding(path, emb_type, model, batch_size = None, cross_validation_splits: int = None):
-    assert emb_type in SUPPORTED_EMBEDDINGS, "Embedding type not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb_type / Path(path).stem, path=path, model_type=model, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
+def train_embeddings(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None):
+    assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
 
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
-def _liwc(path, liwc_dict, model, batch_size = None, cross_validation_splits: int = None):
-    assert liwc_dict in SUPPORTED_LIWC_DICTS, "LIWC dictionary version not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / f'{liwc_dict}' / Path(path).stem, path=path, model_type=model, batch_size=batch_size, cross_validation_splits=cross_validation_splits)
-
-
-# Training based on selected feature
-def train_embeddings(path: str, emb:str, model:str, cross_val_splits = None):
-    assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
-    if cross_val_splits:
-        _embedding(emb_type=emb, path=path, model=model, cross_validation_splits=cross_val_splits)
-    else:
-        _embedding(emb_type=emb, path=path, model=model, batch_size=32)
-
-
-def train_liwc(path: str, liwc_dict:str, model:str, cross_val_splits = None):
+def train_liwc(path: str, liwc_dict:str, model:str, batch_size = None, grid_search_metric = None):
     assert liwc_dict in SUPPORTED_LIWC_DICTS, "Liwc dictionary not supported!"
-    if cross_val_splits:
-        _liwc(path=path, liwc_dict=liwc_dict, model=model, cross_validation_splits=cross_val_splits)
-    else:
-        _liwc(path=path, liwc_dict=liwc_dict, model=model)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / liwc_dict / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
 
 
 click.option = partial(click.option, show_default=True)
 @click.command()
 @click.argument("path", nargs=1)
-@click.option("-m", "--model", type=click.Choice(["svm", "nb", "xgboost", "knn", "gaussian"]), default="svm", help="Model to select from saved models")
-def main(path, model):
+@click.option("-m", "--model", type=click.Choice(["svm", "sgd", "nb", "xgboost", "knn", "gaussian"]), default="svm", help="Model to select from saved models")
+@click.option("-g", "--grid-search-metric", type=click.Choice(["f1", "recall", "recall_f1", "precision", None]), default="f1", help="Perform grid search with given metric")
+def main(path, model, grid_search_metric):
 
     # Check that path leads to file
     assert os.path.isfile(path), "No file found!"
@@ -181,9 +236,10 @@ def main(path, model):
         elif "bert" in path:
             emb_type = "bert"
         assert emb_type, "Incorrect format, could not find embedding!"
-        train_embeddings(path, emb_type, model)
+        train_embeddings(path, emb_type, model, grid_search_metric = grid_search_metric)
         
-    elif "LIWC" in path:
+
+    elif "liwc" in path:
         # Find liwc_dict
         liwc_dict = None
         if "2022" in path:
@@ -195,7 +251,7 @@ def main(path, model):
         elif "2001" in path:
             liwc_dict = "2001"
         assert liwc_dict, "Incorrect format, could not find LIWC dict!"
-        train_liwc(path, liwc_dict, model)
+        train_liwc(path, liwc_dict, model, grid_search_metric = grid_search_metric)
 
 if __name__ == "__main__":
     main()
