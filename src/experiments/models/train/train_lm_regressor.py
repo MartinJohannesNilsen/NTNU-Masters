@@ -22,18 +22,17 @@ def _get_dataframe(dataset: str = "all_labeled"):
     # Define all possible datasets
     datasets = {
         "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
+        "train_sliced_stair_twitter_256": base_path / "train_test" / "train_sliced_stair_twitter_256.csv",
+        "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+        "train_no_stair_twitter_256": base_path / "train_test" / "train_no_stair_twitter_256.csv",
+        
         "test_sliced_stair_twitter": base_path / "train_test" / "test_sliced_stair_twitter.csv",
-        "hold_out_test_sliced_stair_twitter": base_path / "train_test" / "hold_out_test_sliced_stair_twitter.csv",
-        # "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
-        # "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
-        # "all_labeled": base_path / "all_labeled.csv",
-        # "all": base_path / "all.csv",
-        # "manifestos": base_path / "manifestos.csv",
-        # "mypersonality": base_path / "mypersonality.csv",
-        # "school_shooters": base_path / "school_shooters.csv",
-        # "stair_twitter_archive": base_path / "stair_twitter_archive.csv",
-        # "stream_of_consciousness": base_path / "stream_of_consciousness.csv",
-        # "twitter": base_path / "twitter.csv",
+        "test_sliced_stair_twitter_256": base_path / "train_test" / "test_sliced_stair_twitter_256.csv",
+        "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
+        "test_no_stair_twitter_256": base_path / "train_test" / "test_no_stair_twitter_256.csv",
+        
+        "shooter_hold_out_test": base_path / "train_test" / "shooter_hold_out_test.csv",
+        "shooter_hold_out_test_256": base_path / "train_test" / "shooter_hold_out_test_256.csv",
     }
 
     # Read csv

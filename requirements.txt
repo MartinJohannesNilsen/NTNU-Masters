@@ -24,3 +24,4 @@ psutil
 tables
 h5py
 xgboost
+threadpoolctl==3.1.0 # Fix knn error

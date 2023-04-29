@@ -1,7 +1,7 @@
 from typing import List
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
 from collections import defaultdict
-
+from tabulate import tabulate
 
 def get_metrics(predictions: List[float], labels: List[float]) -> dict:
     """Get a selection of performance metrics.
@@ -16,7 +16,12 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
     
     # Gather performance metrics
     tn, fp, fn, tp = confusion_matrix(labels, predictions, labels=[0, 1]).ravel()
-    precision, recall, fscore, _ = precision_recall_fscore_support(labels, predictions, average="macro", zero_division=0)
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    precision = (tp) / (tp + fp)
+    recall = (tp) / (tp + fn)
+    specificity = (tn) / (tn + fp)
+    fscore = 2 * (precision * recall) / (precision + recall)
+    
     try:
         roc_auc = roc_auc_score(labels, predictions)
     except:
@@ -28,10 +33,10 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
         "fp": fp,
         "fn": fn,
         "tp": tp,
-        "accuracy": (tp+tn)/(tp+fp+fn+tn),
+        "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
-        "specificity": tn / (tn + fp),
+        "specificity": specificity,
         "f1_score": fscore,
         "roc_auc": roc_auc
     }
@@ -64,7 +69,6 @@ def print_metrics_simplified(metrics: dict):
     print(f"F1-score: {round(metrics['f1_score']*100, 3)}%")
     print(f"AUC: {round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "AUC: undefined")
 
-
 def print_metrics_comprehensive(metrics: dict):
 
     # Print metrics
@@ -96,6 +100,17 @@ def print_metrics_comprehensive(metrics: dict):
     print(f"\nAUC (Area under ROC curve, ROC-AUC)")
     print(f"\"Tells us about the capability of model in distinguishing the classes\"")
     print(f"{round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "undefined")
+
+def print_tabulated_metric_iterations(keys: List, list_of_metrics: List[dict]):
+    assert len(list_of_metrics) > 0, "List of metrics is empty!"
+    assert len(keys) == len(list_of_metrics), "Keys need "
+
+    headers = ["Threshold"] + list_of_metrics[0].keys()
+    table = []
+    for i, metrics in enumerate(list_of_metrics):
+        table.append([keys[i]] + metrics.values())
+
+    print(tabulate(table, headers=headers))
 
 def get_posts_ordered_by_confusion_matrix(texts: List[str], predictions: List[float], labels: List[float]):
     text_dicts = {"tp": [], "fp": [], "tn": [], "fn": []}

@@ -7,7 +7,9 @@ from pathlib import Path
 train_datasets = ["train_sliced_stair_twitter", "train_no_stair_twitter"]
 
 models = ["svm", "nb", "knn", "xgboost", "gaussian"]
+# models = ["knn"]
 liwc_dictionaries = ["2022", "2015", "2007", "2001"]
+# liwc_dictionaries = ["2022"] # , "2015", "2007", "2001"
 for model in models:
     for liwc in liwc_dictionaries:
         for train_dataset in train_datasets:

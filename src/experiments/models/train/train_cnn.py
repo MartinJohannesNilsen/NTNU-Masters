@@ -227,23 +227,24 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         true_vlabels = []
 
         running_vloss = 0.0
-        for _, vdata in enumerate(val_loader):
-            vinputs, vlabels = vdata
-            voutputs = model(vinputs)
+        with torch.no_grad():
+            for _, vdata in enumerate(val_loader):
+                vinputs, vlabels = vdata
+                voutputs = model(vinputs)
 
-            [true_vlabels.append(l) for l in vlabels]
-            [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
-            
-            weighting = []
-            for vl in vlabels:
-                if vl == 0:
-                    weighting.append(class_wts[0])
-                else:
-                    weighting.append(class_wts[1])
+                [true_vlabels.append(l) for l in vlabels]
+                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+                
+                weighting = []
+                for vl in vlabels:
+                    if vl == 0:
+                        weighting.append(class_wts[0])
+                    else:
+                        weighting.append(class_wts[1])
 
-            loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
-            vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
-            running_vloss += vloss.item()
+                loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
+                vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
+                running_vloss += vloss.item()
 
         avg_vloss = running_vloss/len(val_loader)
 

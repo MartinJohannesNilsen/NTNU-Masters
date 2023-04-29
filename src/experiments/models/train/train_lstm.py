@@ -263,8 +263,6 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     for epoch in range(EPOCHS):
         print(f'EPOCH {epoch}:')
-        print(f"mem usage before epoch {epoch}")
-        check_mem_usage()
 
 
         # Make sure gradient tracking is on, and do a pass over the data
@@ -280,27 +278,27 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         running_vloss = 0.0
 
         print("validating")
+        with torch.no_grad():
+            for i, vdata in enumerate(val_loader):
+                vinputs, vlabels, vlengths = vdata
+                vinputs = torch.from_numpy(np.array(vinputs)).to(device)
 
-        for i, vdata in enumerate(val_loader):
-            vinputs, vlabels, vlengths = vdata
-            vinputs = torch.from_numpy(np.array(vinputs)).to(device)
+                v_out = model(vinputs, vlengths)
 
-            v_out = model(vinputs, vlengths)
+                """ print(v_out)
+                print(v_out[0]) """
 
-            """ print(v_out)
-            print(v_out[0]) """
-
-            [true_vlabels.append(vlabel) for vlabel in vlabels]
-            [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in v_out[0]]
-            
-            weighting = [class_wts[l] for l in vlabels]
-            weighting = torch.tensor(weighting).to(device)
-            vlabels = vlabels.to(torch.float32).to(device)
+                [true_vlabels.append(vlabel) for vlabel in vlabels]
+                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in v_out[0]]
+                
+                weighting = [class_wts[l] for l in vlabels]
+                weighting = torch.tensor(weighting).to(device)
+                vlabels = vlabels.to(torch.float32).to(device)
 
 
-            loss_fn = nn.BCELoss(weight=weighting)
-            vloss = loss_fn(v_out.squeeze(dim=1), vlabels)
-            running_vloss += vloss.item()
+                loss_fn = nn.BCELoss(weight=weighting)
+                vloss = loss_fn(v_out.squeeze(dim=1), vlabels)
+                running_vloss += vloss.item()
 
         avg_vloss = running_vloss / len(val_loader)
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
@@ -309,6 +307,9 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         metrics[epoch]["train_loss"] = avg_loss
         metrics[epoch]["val_loss"] = avg_vloss
         print(metrics[epoch])
+
+        """ print(f"mem usage after epoch {epoch}")
+        check_mem_usage() """
         
         #wandb.log({"avg_eloss": avg_loss, "avg_vloss": avg_vloss})
 
