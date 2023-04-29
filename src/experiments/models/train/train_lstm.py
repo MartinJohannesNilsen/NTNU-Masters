@@ -41,102 +41,65 @@ def _find_field_size_limit():
 class TextDataset(Dataset):
     def __init__(self, df):
         self.df = df
-        #print(f"Data length: {self.data_len}")
 
     def __len__(self):
         return len(self.df.index)
-
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx].values
         tokens, length = row[1]
         label = row[3]
 
-        #print(f"tokens: {tokens.shape}\nlabel: {label.shape}")
-
         return tokens, label, length
     
-
     def get_class_weights(self):
         total_texts = self.__len__()
         num_non_shooter_texts, num_shooter_texts = self.df["label"].value_counts()
-
         print(f"Value counts:\n{self.df['label'].value_counts()}")
 
         non_shooter_wt = total_texts / num_non_shooter_texts
         shooter_wt = total_texts / num_shooter_texts
-
         print(f"non_shooter: {non_shooter_wt}\nshooter: {shooter_wt}")
 
         return [non_shooter_wt, shooter_wt]
 
 
 class LSTMTextClassifier(nn.Module):
-    def __init__(self, embs, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, dropout: int = 0.5, hidden_size: int = 128, num_layers: int = 2):
+    def __init__(self, embs, emb_dim: int = 300, dropout: int = 0.5, hidden_size: int = 128, num_layers: int = 2):
         super(LSTMTextClassifier, self).__init__()
 
         self.embedding = nn.Embedding.from_pretrained(torch.from_numpy(embs).float())
         self.embedding.weight.requires_grad = False
-
         self.hidden_size = hidden_size
 
         self.lstm = nn.LSTM(emb_dim, hidden_size, num_layers, batch_first=True, bidirectional=True)
-
         self.fc = nn.Linear(2*hidden_size, 1)
         self.dropout = nn.Dropout(p=dropout)
-        
-        self.sig = nn.Sigmoid() # Sigmoid to squeeze final vals between 0 and 1 to accomodate for binary class prob
-
-
+        self.sig = nn.Sigmoid()
 
     def forward(self, x, length):
         """Perform a forward pass through the network.
 
         Args:
-            input_ids (torch.Tensor): A tensor of token ids with shape
-                (batch_size, max_sent_length)
-
-        Returns:
-            logits (torch.Tensor): Output logits with shape (batch_size,
-                n_classes)
+            x (torch.Tensor): A tensor of token ids with shape (batch_size, max_sent_length)
+            length: the length of the sequence before padding
         """
 
-        # Init hidden layer and cell states for each forward pass
-
-        """ hidden_states = torch.zeros(self.num_layers, x.size[0], self.hidden_size)
-        cell_states = torch.zeros(self.num_layers, x.size[0], self.hidden_size) """
-
-
         embs = self.embedding(x)
-        """ print(f"embs:\n{embs.shape}")
-        print(f"length:{length.shape}") """
-
-        #padded_embs = pad_sequence(embs, batch_first=True)
 
         packed_input = pack_padded_sequence(embs, length, batch_first=True, enforce_sorted=False)
-        #print(f"packed input: {packed_input}")
-
         packed_out, _ = self.lstm(packed_input)
-        #print(f"packed output: {packed_out}")
-
-
         out, _ = pad_packed_sequence(packed_out, batch_first=True)
-        #print(f"out: {out}")
 
-
-        out_forward = out[range(len(out)), length - 1, :self.hidden_size] # Forward dependencies
-        out_backwards = out[:, 0, self.hidden_size:] # Backward dependencies
+        out_forward = out[range(len(out)), length - 1, :self.hidden_size]
+        out_backwards = out[:, 0, self.hidden_size:]
 
         out_reduced = torch.cat((out_forward, out_backwards), 1) # Concat for fc layer and final pred
         out_dropped = self.dropout(out_reduced) # Dropout layer
+        out = self.fc(out_dropped)
+        out = self.sig(out)
 
-        logit = self.fc(out_dropped)
-        #logit = torch.squeeze(logit, 1)
-
-        pred = self.sig(logit)
-        #print(f"pred dim: {pred.shape}")
-
-        return pred
+        return out
 
 def check_mem_usage():
     print("torch.cuda.memory_allocated: %fMB"%(torch.cuda.memory_allocated(0)/1024/1024))
