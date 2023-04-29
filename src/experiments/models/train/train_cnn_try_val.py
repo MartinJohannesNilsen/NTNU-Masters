@@ -20,6 +20,7 @@ import numpy as np
 from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
 import click
+import pandas as pd
 
 # Maxsize of csv field size
 def _find_field_size_limit():
@@ -34,20 +35,20 @@ def _find_field_size_limit():
 
 
 class TextDataset(Dataset):
-    def __init__(self, data_path):
-        self.data_path = data_path
-        self.file = h5py.File(self.data_path, "r")
-        self.data_len = self.file["idx"].shape[0]
+    def __init__(self, fpath, indices):
+        self.file = h5py.File(fpath, "r")
+        self.indices = indices
         #print(f"Data length: {self.data_len}")
 
 
     def __len__(self):
-        return self.data_len
+        return len(self.indices)
 
 
     def __getitem__(self, idx):
-        features = torch.from_numpy(self.file["emb_tensor"][idx])
-        labels = self.file["label"][idx]
+        valid_idx = self.indices[idx]
+        features = torch.from_numpy(self.file["emb_tensor"][valid_idx])
+        labels = self.file["label"][valid_idx]
 
         return features, labels
     
@@ -67,11 +68,8 @@ class TextDataset(Dataset):
         return [non_shooter_wt, shooter_wt]
 
 
-
-
-
 class TextClassifier(nn.Module):
-    def __init__(self, emb_dim: int = 300, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
+    def __init__(self, batch_size: int = None, emb_dim: int = 300, sentence_len: int = 256, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5):
         super(TextClassifier, self).__init__()
 
         self.conv1d_list = nn.ModuleList([
@@ -117,13 +115,11 @@ class TextClassifier(nn.Module):
         # Output shape: (b, sum(num_filters))
         x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
                          dim=1)
-        #print(f"x_fc: {x_fc.size()}")
-
+        
         #print(f"Size after squeeze and flatten: {x_fc.size()}")
 
         # Compute logits. Output shape: (b, n_classes)
         out = self.fc(self.dropout(x_fc))
-        #print(f"fc_sz: {self.fc.size()}")
 
         #print(f"output after dropout={0.5} and fc layer: {out}")
 
@@ -141,41 +137,66 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     # Read data
     base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
 
-    emb_str = f"{embedding_type}_{embedding_dim}" if embedding_dim == 50 else f"{embedding_type}"
+    emb_str = f"{embedding_type}" if embedding_dim == 300 else f"{embedding_type}_{embedding_dim}"
     sent_len_str = "" if sentence_length == 512 else f"_{sentence_length}"
 
 
     train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
+    train_entries = None
+    with h5py.File(train_path, "r") as f:
+        train_index = f["idx"]
+        train_labels = f["label"]
+        train_entries = pd.DataFrame({"idx": train_index, "label": train_labels})
+    
+    shooter_sampled = train_entries[train_entries["label"] == 1].sample(frac=0.2, random_state=1)
+    non_shooter_sampled = train_entries[train_entries["label"] == 0].sample(frac=0.2, random_state=1)
+
+    print(f"shooter_samples: {shooter_sampled}")
+    print(f"non_shooter_samples: {non_shooter_sampled}")
+
+
+    val_set = pd.concat([shooter_sampled, non_shooter_sampled], axis=0)
+    drop_idx = shooter_sampled.index.tolist() + non_shooter_sampled.index.tolist()
+    train_entries = train_entries.drop(index=drop_idx)
+    
+    print(f"val_indexes: {val_set.index.tolist()}")
+    print(f"train_indexes: {train_entries.index.tolist()}")
+
+
+
     val_path = base_path / f"test_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
 
     # Creating datasets for use with dataloaders
-    train_set = TextDataset(train_path)
-    val_set = TextDataset(val_path)
+    train_set = TextDataset(train_path, train_entries.index.tolist())
+    val_set = TextDataset(train_path, val_set.index.tolist())
 
     # Load dataset
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=32, shuffle=False, pin_memory=True)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
     # Create model
     model = TextClassifier(emb_dim=embedding_dim).to(device)
 
     # Create loss function and optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
 
     # Run epoch of 
     def run_epoch():
         running_loss = 0.
+        last_loss = 0.
 
-        for _, data in enumerate(train_loader):
+        for i, data in enumerate(train_loader):
             inputs, labels = data
             labels = labels.to(torch.float32)
             inputs = inputs.to(device)
             labels = labels.to(device)
-
+            #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
+
             outputs = model(inputs)
+            #print(f"out: {outputs}")
 
             weighting = []
             for l in labels:
@@ -188,10 +209,17 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
             loss = loss_fn(outputs.squeeze(), labels.to(torch.float32)) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
+
             optimizer.step()
+
             running_loss += loss.item()
-                        
-        return running_loss/len(train_loader)
+            
+            # Update reported loss values every 50 steps
+            if i % 50 == 49:
+                last_loss = running_loss / 50
+                running_loss = 0.
+            
+        return last_loss
 
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -229,27 +257,25 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         true_vlabels = []
 
         running_vloss = 0.0
-        with torch.no_grad():
-            for _, vdata in enumerate(val_loader):
-                vinputs, vlabels = vdata
-                voutputs = model(vinputs)
+        for i, vdata in enumerate(val_loader):
+            vinputs, vlabels = vdata
+            voutputs = model(vinputs)
 
-                [true_vlabels.append(l) for l in vlabels]
-                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
-                
-                weighting = []
-                for vl in vlabels:
-                    if vl == 0:
-                        weighting.append(class_wts[0])
-                    else:
-                        weighting.append(class_wts[1])
+            [true_vlabels.append(l) for l in vlabels]
+            [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+            
+            weighting = []
+            for vl in vlabels:
+                if vl == 0:
+                    weighting.append(class_wts[0])
+                else:
+                    weighting.append(class_wts[1])
 
-                loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
-                vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
-                running_vloss += vloss.item()
+            loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
+            vloss = loss_fn(voutputs, vlabels.to(torch.float32).unsqueeze(1))
+            running_vloss += vloss.item()
 
-        avg_vloss = running_vloss/len(val_loader)
-
+        avg_vloss = running_vloss / (i + 1)
         print(f'LOSS train {avg_loss} valid {avg_vloss}')
 
         metrics[epoch] = get_metrics(pred_vlabels, true_vlabels)
@@ -292,4 +318,5 @@ def main(emb, dim, length, pad_pos):
     train(embedding_type=emb, pad_pos=pad_pos, num_epochs=10, sentence_length=length, embedding_dim=dim)
 
 if __name__ == "__main__":
-    train(embedding_type="bert", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=756)
+    main()
+
