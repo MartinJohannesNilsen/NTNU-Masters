@@ -10,7 +10,7 @@ import sys
 import pandas as pd
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
-from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, get_posts_ordered_by_confusion_matrix
+from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, get_posts_ordered_by_confusion_matrix, print_tabulated_metric_iterations
 from experiments.features.load_and_store_emb_batches import read_h5
 
 
@@ -23,7 +23,7 @@ def test_embeddings(model_path, test_path, batch_size: int = None):
         data = read_h5(test_path)
         X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
         y_true = np.array(data["label"])
-        y_pred = model.predict(X)
+        y_pred = [prob[1] for prob in model.predict_proba(X)]
     else:
         n_total_samples = len(read_h5(test_path, col_name="idx"))
         y_pred = []
@@ -31,7 +31,7 @@ def test_embeddings(model_path, test_path, batch_size: int = None):
         for i in range(0, n_total_samples, batch_size):
             data = read_h5(test_path, start=i, chunk_size=batch_size)
             X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
-            y_pred.extend(model.predict(X))
+            y_pred.extend([prob[1] for prob in model.predict_proba(X)])
             y_true.extend(data["label"])
 
     return y_pred, y_true
@@ -46,7 +46,7 @@ def test_liwc(model_path, test_path, batch_size: int = None):
         data = read_h5(test_path)
         X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
         y_true = np.array(data["label"])
-        y_pred = model.predict(X)
+        y_pred = [prob[1] for prob in model.predict_proba(X)]
     else:
         n_total_samples = len(read_h5(test_path, col_name="idx"))
         y_pred = []
@@ -54,7 +54,7 @@ def test_liwc(model_path, test_path, batch_size: int = None):
         for i in range(0, n_total_samples, batch_size):
             data = read_h5(test_path, start=i, chunk_size=batch_size)
             X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
-            y_pred.extend(model.predict(X))
+            y_pred.extend([prob[1] for prob in model.predict_proba(X)])
             y_true.extend(data["label"])
 
     return y_pred, y_true
@@ -90,73 +90,65 @@ click.option = partial(click.option, show_default=True)
 @click.argument("model_path", nargs=1)
 @click.argument("test_path", nargs=1)
 @click.option("-t", "--threshold", type=float, default=0.5, help="Threshold for predictions")
+@click.option("-l", "--list-of-thresholds", type=List[float], default=None, help="List of thresholds to iterate over")
 @click.option("-o", "--output", type=str, help="Output posts grouped by confusion matrix to file")
-def main(model_path, test_path, threshold, output):
+def main(model_path, test_path, threshold, list_of_thresholds, output):
     assert threshold >= 0 and threshold <= 1, "Threshold needs to be between 0 and 1!"
-
-    print(f"Threshold = {threshold}")
 
     # Check that paths leads to files
     assert os.path.isfile(model_path), "No model file found!"
     assert os.path.isfile(test_path), "No test file found!"
 
-    if "embeddings" in model_path:
-        assert "embeddings" in test_path, "Mismatch between model and test embeddings path!"
-        y_pred, y_true = test_embeddings(model_path, test_path)
-        y_pred_sigmoid = [sigmoid_function(pred) for pred in y_pred]
-        out = [1 if pred > threshold else 0 for pred in y_pred_sigmoid]
-        stats = get_metrics(out, y_true)
-        print_metrics_comprehensive(stats)
-        if output:
-            # Get texts ordered by confusion matrix
-            emb_text_path = _get_data_path_from_emb_path(test_path)
-            emb_texts = get_texts_matching_tensors(test_path, emb_text_path)
-            post_dict = get_posts_ordered_by_confusion_matrix(emb_texts, out, y_true)
-            
-            # Write to output file
-            os.makedirs(os.path.dirname(output), exist_ok=True)
-            with open(output, "w") as f:
-                f.write(f"{'%'*20}\nThreshold = {threshold}\n{'%'*20}\n")
-                for k, v in post_dict.items():
-                    f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
-                    f.writelines(line + "\n" for line in v)
-                    f.writelines("\n")
-    
-    elif "liwc" in model_path:
-        assert "liwc" in test_path, "Mismatch between model and test LIWC dictionaries path!"
-        y_pred, y_true = test_liwc(model_path, test_path)
-        y_pred_sigmoid = [sigmoid_function(pred) for pred in y_pred]
-        # for pred in y_pred:
-        #     if pred > 1 or pred < 0:
-        #         print(pred)
-        out = [1 if pred > threshold else 0 for pred in y_pred_sigmoid]
-        stats = get_metrics(out, y_true)
-        print_metrics_comprehensive(stats)
-        if output:
-            # Get texts ordered by confusion matrix
-            liwc_text_path = test_path.replace("h5", "csv")
-            liwc_texts = get_texts_liwc(liwc_text_path)
-            post_dict = get_posts_ordered_by_confusion_matrix(liwc_texts, out, y_true)
-            
-            # Write to output file
-            os.makedirs(os.path.dirname(output), exist_ok=True)
-            with open(output, "w") as f:
-                f.write(f"{'%'*20}\nThreshold = {threshold}\n{'%'*20}\n")
-                for k, v in post_dict.items():
-                    f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
-                    f.writelines(line + "\n" for line in v)
-                    f.writelines("\n")
+    def test(t):
 
+        # Threshold
+        print(f"Threshold = {threshold}")
+
+        if "embeddings" in model_path:
+            assert "embeddings" in test_path, "Mismatch between model and test embeddings path!"
+            y_pred, y_true = test_embeddings(model_path, test_path)
+            out = [1 if pred > t else 0 for pred in y_pred]
+            metrics = get_metrics(out, y_true)
+            return metrics, out, y_true
+        
+        elif "liwc" in model_path:
+            assert "liwc" in test_path, "Mismatch between model and test LIWC dictionaries path!"
+            y_pred, y_true = test_liwc(model_path, test_path)
+            out = [1 if pred > t else 0 for pred in y_pred]
+            metrics = get_metrics(out, y_true)
+            return metrics, out, y_true
+
+    def write_output(pred, labels):
+        # Get texts ordered by confusion matrix
+        emb_text_path = _get_data_path_from_emb_path(test_path)
+        emb_texts = get_texts_matching_tensors(test_path, emb_text_path)
+        post_dict = get_posts_ordered_by_confusion_matrix(emb_texts, pred, labels)
+        
+        # Write to output file
+        os.makedirs(os.path.dirname(output), exist_ok=True)
+        with open(output, "w") as f:
+            f.write(f"{'%'*20}\nThreshold = {t}\n{'%'*20}\n")
+            for k, v in post_dict.items():
+                f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
+                f.writelines(line + "\n" for line in v)
+                f.writelines("\n")
+
+
+    if list_of_thresholds:
+        list_of_metrics = []
+        for t in list_of_thresholds:
+            metrics, out, y_true = test(threshold)
+            list_of_metrics.append(metrics)
+            if output:
+                write_output(out, y_true)
+        print_tabulated_metric_iterations(keys=list_of_thresholds, list_of_metrics=list_of_metrics)
+
+    else:
+        metrics, out, y_true = test(threshold)
+        print_metrics_comprehensive(metrics)
+        if output:
+            write_output(out, y_true)
 
 
 if __name__ == "__main__":
     main()
-
-    # emb = "/Users/martinjohannesnilsen/NTNU/Datateknologi/4. semester/Master's Thesis/Source Code/src/experiments/features/embeddings/test_sliced_stair_twitter_glove_50_tail_256.h5"
-    # dataset = "/Users/martinjohannesnilsen/NTNU/Datateknologi/4. semester/Master's Thesis/Source Code/src/dataset_creation/data/train_test/test_sliced_stair_twitter_256.csv"
-    # get_texts_matching_tensors(emb, dataset)
-    
-    # liwc = "/Users/martinjohannesnilsen/NTNU/Datateknologi/4. semester/Master's Thesis/Source Code/src/experiments/features/liwc/csv/2022/LIWC-22 Results - test_sliced_stair_twitter - LIWC Analysis.csv"
-    # print(get_texts_matching_liwc(liwc))
-
-    # python test_sklearn.py "/Users/martinjohannesnilsen/NTNU/Datateknologi/4. semester/Master's Thesis/Source Code/src/experiments/models/saved_models/svm/embeddings/glove/test_sliced_stair_twitter_glove_50_tail_256/sklearn_model.sav" "/Users/martinjohannesnilsen/NTNU/Datateknologi/4. semester/Master's Thesis/Source Code/src/experiments/features/embeddings/test_sliced_stair_twitter_glove_50_tail_256.h5" --output "./out.txt"

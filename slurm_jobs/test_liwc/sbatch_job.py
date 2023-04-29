@@ -10,7 +10,8 @@ test_datasets = ["test_sliced_stair_twitter", "test_no_stair_twitter"]
 # test_datasets = ["shooter_hold_out_test"]
 
 
-models = ["svm", "knn", "xgboost", "gaussian" ] # "nb"
+# models = ["svm", "knn", "xgboost", "gaussian", "nb" ]
+models = ["svm"]
 liwc_dictionaries = ["2022", "2015", "2007", "2001"]
 for model in models:
     for liwc in liwc_dictionaries:

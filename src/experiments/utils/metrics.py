@@ -1,7 +1,7 @@
 from typing import List
 from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
 from collections import defaultdict
-
+from tabulate import tabulate
 
 def get_metrics(predictions: List[float], labels: List[float]) -> dict:
     """Get a selection of performance metrics.
@@ -69,7 +69,6 @@ def print_metrics_simplified(metrics: dict):
     print(f"F1-score: {round(metrics['f1_score']*100, 3)}%")
     print(f"AUC: {round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "AUC: undefined")
 
-
 def print_metrics_comprehensive(metrics: dict):
 
     # Print metrics
@@ -101,6 +100,17 @@ def print_metrics_comprehensive(metrics: dict):
     print(f"\nAUC (Area under ROC curve, ROC-AUC)")
     print(f"\"Tells us about the capability of model in distinguishing the classes\"")
     print(f"{round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "undefined")
+
+def print_tabulated_metric_iterations(keys: List, list_of_metrics: List[dict]):
+    assert len(list_of_metrics) > 0, "List of metrics is empty!"
+    assert len(keys) == len(list_of_metrics), "Keys need "
+
+    headers = ["Threshold"] + list_of_metrics[0].keys()
+    table = []
+    for i, metrics in enumerate(list_of_metrics):
+        table.append([keys[i]] + metrics.values())
+
+    print(tabulate(table, headers=headers))
 
 def get_posts_ordered_by_confusion_matrix(texts: List[str], predictions: List[float], labels: List[float]):
     text_dicts = {"tp": [], "fp": [], "tn": [], "fn": []}
