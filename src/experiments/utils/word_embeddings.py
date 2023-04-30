@@ -225,6 +225,7 @@ def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True):
     return vocab
 
 def get_id_from_tokens(text, word_to_idx):
+
     ids = []
     for token in split_safe(text):
         if token in word_to_idx:

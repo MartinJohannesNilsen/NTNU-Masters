@@ -227,7 +227,7 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, pad_pos = None, step_s
             df = None
 
 @click.command()
-@click.option("-e", "--emb", type=click.Choice(["fasttext", "glove", "bert"]) , help="Embedding type to be used for training")
+@click.option("-e", "--emb", type=click.Choice(["fasttext", "glove", "bert", "glove_50"]) , help="Embedding type to be used for training")
 @click.option("-l", "--length", type=click.INT, help="Max length of sequence")
 @click.option("-p", "--pad_pos", type=click.Choice(["head", "tail", "split"]), help="Position of padding")
 def main(emb, length, pad_pos):
