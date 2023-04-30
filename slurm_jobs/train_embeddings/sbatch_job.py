@@ -11,7 +11,7 @@ paddings = ["head", "tail", "split"]
 sizes = ["512", "256"]
 
 embeddings = ["bert"]
-paddings = ["split"]
+paddings = ["tail"]
 variations = ["train_sliced_stair_twitter"]
 sizes = ["512"]
 

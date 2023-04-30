@@ -4,7 +4,8 @@ from pathlib import Path
 
 
 # TODO Select train and test dataset
-train_datasets = ["train_sliced_stair_twitter", "train_no_stair_twitter"]
+# train_datasets = ["train_sliced_stair_twitter", "train_no_stair_twitter"]
+train_datasets = ["train_sliced_stair_twitter"]
 
 models = ["svm", "nb", "knn", "xgboost", "gaussian"]
 # models = ["knn"]

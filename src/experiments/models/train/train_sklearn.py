@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import click
 import numpy as np
-
+import time
 import pickle
 from sklearn.metrics import make_scorer, recall_score   
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, KFold, StratifiedKFold, train_test_split
@@ -137,10 +137,10 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         data = read_h5(path)
 
         # Train data inputs X and labels y
-        X = np.array(data["emb_tensor"]).reshape(len(data["emb_tensor"]), -1) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+        X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
         y = np.array(data["label"])
 
-        # Split dataaset into 60% sample for grid search if liwc, 10% if embeddings
+        # Split dataaset into 60% sample for grid search if liwc, 10% if features
         X_sample, _, y_sample, _ = train_test_split(X, y, test_size=0.4 if "liwc" in str(saved_model_dir) else 0.99, random_state=42, stratify=y)
 
         # Set up cross-validation
@@ -173,30 +173,52 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
     # If regular training
     else:
         if batch_size:
+            print(f"Training with batch size {batch_size}")
             n_samples_total = len(read_h5(path, col_name="idx"))
             # Iterate over all batches
             for i in range(0, n_samples_total, batch_size):
-                
+            
                 # Read data
-                data = read_h5(path, start=i, chunk_size=batch_size)
+                print(f"Reading features and labels for batch {i} ...")
+                start_time = time.time()
+                features = read_h5(path, start=i, chunk_size=batch_size, keep_tensor_as_ndarray=True, col_name="emb_tensor")
+                labels = read_h5(path, start=i, chunk_size=batch_size, col_name="label")
+                print(f"Finished reading in {round(time.time() - start_time, 0)} seconds")
 
                 # Train data inputs X and labels y
-                X = np.array(data["emb_tensor"]).reshape(len(data["emb_tensor"]), -1) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
-                y = np.array(data["label"])
+                print("Creating X for sklearn model ...")
+                start_time = time.time()
+                X = np.array([row.ravel() for row in features]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+                print(f"Created X in {round(time.time() - start_time, 0)} seconds. Size: {round(X.nbytes / 10**9, 2)}GB")
+                y = np.array(labels)
 
                 # Fit model
+                print("Fitting model to data ...")
+                start_time = time.time()
                 model.partial_fit(X, y)
+                print(f"Fitted model to data in {round(time.time() - start_time, 0)} seconds")
         
         else:
+            print("Training without batch size")
             # Read data
-            data = read_h5(path)
+            print("Reading features and labels ...")
+            start_time = time.time()
+            features = read_h5(path, keep_tensor_as_ndarray=True, col_name="emb_tensor")
+            labels = read_h5(path, col_name="label")
+            print(f"Finished reading in {round(time.time() - start_time, 0)} seconds")
 
             # Train data inputs X and labels y
-            X = np.array(data["emb_tensor"]).reshape(len(data["emb_tensor"]), -1) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
-            y = np.array(data["label"])
+            print("Creating X for sklearn model ...")
+            start_time = time.time()
+            X = np.array([row.ravel() for row in features]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+            print(f"Created X in {round(time.time() - start_time, 0)} seconds. Size: {round(X.nbytes / 10**9, 2)}GB")
+            y = np.array(labels)
 
             # Fit model
+            print("Fitting model to data ...")
+            start_time = time.time()
             model.fit(X, y)
+            print(f"Fitted model to data in {round(time.time() - start_time, 0)} seconds")
             
         # Save model
         _save_model(model, saved_model_dir=saved_model_dir)
@@ -204,9 +226,9 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
 
 # Training based on selected feature
 SUPPORTED_EMBEDDINGS = ["glove", "glove_50", "fasttext", "bert"]
-def train_embeddings(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None):
+def train_features(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None):
     assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'features' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
 
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
 def train_liwc(path: str, liwc_dict:str, model:str, batch_size = None, grid_search_metric = None):
@@ -218,13 +240,13 @@ click.option = partial(click.option, show_default=True)
 @click.command()
 @click.argument("path", nargs=1)
 @click.option("-m", "--model", type=click.Choice(["svm", "sgd", "nb", "xgboost", "knn", "gaussian"]), default="svm", help="Model to select from saved models")
-@click.option("-g", "--grid-search-metric", type=click.Choice(["f1", "recall", "recall_f1", "precision", None]), default="f1", help="Perform grid search with given metric")
+@click.option("-g", "--grid-search-metric", type=click.Choice(["f1", "recall", "recall_f1", "precision", None]), default=None, help="Perform grid search with given metric")
 def main(path, model, grid_search_metric):
 
     # Check that path leads to file
     assert os.path.isfile(path), "No file found!"
 
-    if "embeddings" in path:
+    if "features" in path:
         # Find emb_type
         emb_type = None
         if "glove_50" in path:
@@ -236,7 +258,7 @@ def main(path, model, grid_search_metric):
         elif "bert" in path:
             emb_type = "bert"
         assert emb_type, "Incorrect format, could not find embedding!"
-        train_embeddings(path, emb_type, model, grid_search_metric = grid_search_metric)
+        train_features(path, emb_type, model, grid_search_metric = grid_search_metric)
         
 
     elif "liwc" in path:

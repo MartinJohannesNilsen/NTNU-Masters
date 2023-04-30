@@ -4,7 +4,7 @@
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
 #SBATCH --time=96:00:00
-#SBATCH --mem=768000                        # 768 GB in mb
+#SBATCH --mem=200000                        # 768 GB in mb
 ##SBATCH --gres=gpu:1 
 ##SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
@@ -46,13 +46,13 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-echo "F1"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "f1"
-echo "Recall"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall"
-echo "Recall-F1"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
-#python3 train_sklearn.py $feature_path --model $model
+#echo "F1"
+#python3 train_sklearn.py $feature_path --model $model --grid-search-metric "f1"
+#echo "Recall"
+#python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall"
+#echo "Recall-F1"
+#python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
+python3 -u train_sklearn.py $feature_path --model $model 
 
 # Print idun stats
 uname -a
