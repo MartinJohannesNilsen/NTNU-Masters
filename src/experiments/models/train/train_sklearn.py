@@ -123,7 +123,7 @@ def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
     return model_path
 
 # Training
-def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1"):
+def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1", random_search = True):
 
     # Get model
     model = _get_model(model_type)
@@ -131,17 +131,30 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
     # Run cross_val if number of splits is defined
     if grid_search_metric:
 
+        # Get classifier and grid params
+        print(f"Hyperparameter tuning using sklearn {'RandomizedSearchCV' if random_search else 'GridSearchCV'}")
         classifier, grid_params = grid_search_params[model_type]
-
+        
         # Read data
-        data = read_h5(path)
+        print("Loading features and labels ...")
+        start_time = time.time()
+        features = read_h5(path, keep_tensor_as_ndarray=True, col_name="emb_tensor")
+        labels = read_h5(path, col_name="label")
+        print(f"Finished loading in {round(time.time() - start_time, 0)} seconds")
 
         # Train data inputs X and labels y
-        X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
-        y = np.array(data["label"])
+        print("Creating X for sklearn model ...")
+        start_time = time.time()
+        X = np.array([row.ravel() for row in features]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+        print(f"Created X in {round(time.time() - start_time, 0)} seconds. Size: {round(X.nbytes / 10**9, 2)}GB")
+        y = np.array(labels)
 
-        # Split dataaset into 60% sample for grid search if liwc, 10% if features
-        X_sample, _, y_sample, _ = train_test_split(X, y, test_size=0.4 if "liwc" in str(saved_model_dir) else 0.99, random_state=42, stratify=y)
+        # Split dataaset into 60% sample
+        sample_size = 0.6
+        print(f"Sample {sample_size*100}% for search ...")
+        start_time = time.time()
+        X_sample, _, y_sample, _ = train_test_split(X, y, test_size=(1-sample_size), random_state=42, stratify=y)
+        print(f"Created sample in {round(time.time() - start_time, 0)} seconds. Size: {round(X_sample.nbytes / 10**9, 2)}GB")
 
         # Set up cross-validation
         cv = StratifiedKFold(n_splits=5)
@@ -149,11 +162,16 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         # Define scoring metrics
         scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'recall_f1': make_scorer(combined_recall_f1, greater_is_better = True), 'precision': make_scorer(precision_score)}
 
-        grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else -1)
-        # grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else -1, n_iter=10)
+        # Run search
+        print(f"Running hyperparameter search ...")
+        start_time = time.time()
+        if random_search:
+            grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else 1, n_iter=10)
+        else:
+            grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else 1)
         grid_search.fit(X_sample, y_sample)
+        print(f"Finished search in {round(time.time() - start_time, 0)} seconds")
 
-        # print("Best parameters:", grid_search.best_params_)
         # Get the index of the best combination of parameters
         best_index = grid_search.best_index_
 
@@ -179,11 +197,11 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
             for i in range(0, n_samples_total, batch_size):
             
                 # Read data
-                print(f"Reading features and labels for batch {i} ...")
+                print(f"Loading features and labels for batch {i} ...")
                 start_time = time.time()
                 features = read_h5(path, start=i, chunk_size=batch_size, keep_tensor_as_ndarray=True, col_name="emb_tensor")
                 labels = read_h5(path, start=i, chunk_size=batch_size, col_name="label")
-                print(f"Finished reading in {round(time.time() - start_time, 0)} seconds")
+                print(f"Finished loading in {round(time.time() - start_time, 0)} seconds")
 
                 # Train data inputs X and labels y
                 print("Creating X for sklearn model ...")
@@ -201,11 +219,11 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         else:
             print("Training without batch size")
             # Read data
-            print("Reading features and labels ...")
+            print("Loading features and labels ...")
             start_time = time.time()
             features = read_h5(path, keep_tensor_as_ndarray=True, col_name="emb_tensor")
             labels = read_h5(path, col_name="label")
-            print(f"Finished reading in {round(time.time() - start_time, 0)} seconds")
+            print(f"Finished loading in {round(time.time() - start_time, 0)} seconds")
 
             # Train data inputs X and labels y
             print("Creating X for sklearn model ...")
@@ -226,9 +244,9 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
 
 # Training based on selected feature
 SUPPORTED_EMBEDDINGS = ["glove", "glove_50", "fasttext", "bert"]
-def train_features(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None):
+def train_embeddings(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None):
     assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'features' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
 
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
 def train_liwc(path: str, liwc_dict:str, model:str, batch_size = None, grid_search_metric = None):
@@ -246,7 +264,7 @@ def main(path, model, grid_search_metric):
     # Check that path leads to file
     assert os.path.isfile(path), "No file found!"
 
-    if "features" in path:
+    if "embeddings" in path:
         # Find emb_type
         emb_type = None
         if "glove_50" in path:
@@ -258,7 +276,7 @@ def main(path, model, grid_search_metric):
         elif "bert" in path:
             emb_type = "bert"
         assert emb_type, "Incorrect format, could not find embedding!"
-        train_features(path, emb_type, model, grid_search_metric = grid_search_metric)
+        train_embeddings(path, emb_type, model, grid_search_metric = grid_search_metric)
         
 
     elif "liwc" in path:
