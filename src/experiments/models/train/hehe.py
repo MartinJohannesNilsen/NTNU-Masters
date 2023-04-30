@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer, AutoModel, pipeline
+from transformers.pipelines.feature_extraction import FeatureExtractionPipeline
 import torch
 import h5py
 import sys
@@ -6,19 +7,20 @@ import os
 from pathlib import Path
 import numpy as np
 
+
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[3]))
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
 
 base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
-train_path = base_path / "train_sliced_stair_twitter_glove_50_split.h5"
+train_path = base_path / "train_sliced_stair_twitter_glove_head.h5"
 
 f = h5py.File(train_path)
 
-print(f["emb_tensor"][0][-1].shape)
-print(f["emb_tensor"][0][-1])
+print(f["emb_tensor"][0].shape)
+print(f["emb_tensor"][0])
 print(type(f["emb_tensor"][0][-1]))
-print(f"any non zero? {np.any(f['emb_tensor'][0][-1])}")
-print(f"sum of arr at -1? {np.sum(f['emb_tensor'][0][-1])}")
+""" print(f"any non zero? {np.any(f['emb_tensor'][0][-1])}")
+print(f"sum of arr at -1? {np.sum(f['emb_tensor'][0][-1])}") """
 
 """ ones = np.ones(10)
 zeros = np.zeros(10)
@@ -34,23 +36,20 @@ def get_seq_len(seq):
     """
     Due to the way embeddings were stored at the beginning of the project, extracting lengths of the individual sequences was deemed necessary
     """
+    [print(s) for s in seq[4:9]]
     whole_seq_len = len(seq)
-    print(whole_seq_len)
-    print(seq[0:10])
+    print(f"len whole seq: {whole_seq_len}")
 
-    seq_start = 0
-    while not np.any(seq[seq_start]):
-        seq_start += 1
+    i = 1
+    while i < whole_seq_len:
+        if np.any(seq[-i]):
+            break
 
-    seq_len = 0
-    i = seq_start
-    while np.any(seq[i]):
-        seq_len += 1
         i += 1
-        
-    print(f"amount of padding at beginning: {seq_start}")
 
-    return seq_len
+    print(f"amount of padding vecs: {i-1}")
+
+    return whole_seq_len - (i-1)
 
 """
 while not np.any(seq[-i+1]):

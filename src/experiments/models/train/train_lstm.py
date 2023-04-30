@@ -5,6 +5,7 @@ import torch
 import sys
 import csv
 import pandas as pd
+import time
 # sys.exit(1)
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[3]))
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
@@ -25,17 +26,6 @@ from experiments.utils.word_embeddings import get_padded_ids, create_vocab_w_idx
 from csv import QUOTE_NONE
 
 print(f"device: {device}")
-
-# Maxsize of csv field size
-def _find_field_size_limit():
-    max_int = sys.maxsize
-    while True:
-        # Decrease the value by factor 10 as long as the OverflowError occurs.
-        try:
-            csv.field_size_limit(max_int)
-            break
-        except OverflowError:
-            max_int = int(max_int/10)
 
 
 class TextDataset(Dataset):
@@ -86,6 +76,7 @@ class LSTMTextClassifier(nn.Module):
         """
 
         embs = self.embedding(x)
+        print(f"embs: {embs.shape}")
 
         packed_input = pack_padded_sequence(embs, length, batch_first=True, enforce_sorted=False)
         packed_out, _ = self.lstm(packed_input)
@@ -192,9 +183,12 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         last_loss = 0.
 
         for i, data in enumerate(train_loader):
+            print(f"batch: {i}")
+            t1 = time.time()
             inputs, labels, lengths = data
             labels = labels.to(torch.float32).to(device)
             inputs = torch.from_numpy(np.array(inputs)).to(device)
+            print(f"time taken for getting data: {time.time()-t1}")
 
             #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
