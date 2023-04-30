@@ -45,7 +45,7 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
+cd "src/experiments/utils"
 python3 create_and_store_embs.py --emb $emb --size $size --pad_pos $pad_pos
 
 # Print idun stats
