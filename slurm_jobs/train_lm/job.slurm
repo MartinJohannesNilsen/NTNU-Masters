@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=feature_path,model
+#SBATCH --export=model,size,dataset
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -26,6 +26,7 @@ echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
+awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
 
 # Load idun modules
 module purge
@@ -45,10 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "f1"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
-#python3 train_sklearn.py $feature_path --model $model
+python3 train_lm_regressor.py --model $model --size $size --dataset $dataset
 
 # Print idun stats
 uname -a

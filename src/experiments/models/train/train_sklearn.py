@@ -6,7 +6,7 @@ import numpy as np
 
 import pickle
 from sklearn.metrics import make_scorer, recall_score   
-from sklearn.model_selection import GridSearchCV, KFold, StratifiedKFold, train_test_split
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, KFold, StratifiedKFold, train_test_split
 from tabulate import tabulate
 import sys
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
@@ -64,13 +64,12 @@ grid_search_params = {
 grid_search_params = {
     "svm" : (SVC(), {
         'C': np.logspace(-3, 3, 7),
-        'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+        'kernel': ['linear', 'rbf', 'sigmoid'],
         # 'degree': [2, 3, 4, 5],
         'gamma': ['scale', 'auto']}),
-    "sgd": (SGDClassifier(), {
-        'loss': ['hinge'],
+    "sgd": (SGDClassifier(loss="hinge"), {
         # 'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'],
-        'penalty': ['none', 'l1', 'l2', 'elasticnet'],
+        'penalty': ['none', 'l2', 'elasticnet'],
         'alpha': np.logspace(-6, 3, 10),
         # 'l1_ratio': np.linspace(0, 1, 11),
         'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
@@ -83,14 +82,14 @@ grid_search_params = {
         'metric': ['euclidean', 'manhattan', 'minkowski']}),
     "xgboost": (XGBClassifier(eval_metric='logloss'), {
         'n_estimators': range(50, 301, 50),
-        'learning_rate': [0.01, 0.05, 0.1, 0.2, 0.3],
+        'learning_rate': [0.01, 0.05, 0.1, 0.5],
         # 'max_depth': range(3, 11),
         # 'min_child_weight': range(1, 7),
         # 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         # 'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         'gamma': [0, 0.1, 0.2, 0.3, 0.4, 0.5]}),
     "gaussian": (GaussianProcessClassifier(), {
-        'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.Matern(), kernels.WhiteKernel()],
+        'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.WhiteKernel()],
         'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
         'n_restarts_optimizer': [0, 1, 2, 3, 4],
         # 'max_iter_predict': [50, 100, 150, 200]
@@ -138,11 +137,11 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         data = read_h5(path)
 
         # Train data inputs X and labels y
-        X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+        X = np.array(data["emb_tensor"]).reshape(len(data["emb_tensor"]), -1) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
         y = np.array(data["label"])
 
         # Split dataaset into 60% sample for grid search if liwc, 10% if embeddings
-        X_sample, _, y_sample, _ = train_test_split(X, y, test_size=0.4 if "liwc" in saved_model_dir else 0.9, random_state=42, stratify=y)
+        X_sample, _, y_sample, _ = train_test_split(X, y, test_size=0.4 if "liwc" in str(saved_model_dir) else 0.99, random_state=42, stratify=y)
 
         # Set up cross-validation
         cv = StratifiedKFold(n_splits=5)
@@ -150,7 +149,8 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         # Define scoring metrics
         scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'recall_f1': make_scorer(combined_recall_f1, greater_is_better = True), 'precision': make_scorer(precision_score)}
 
-        grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1)
+        grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else -1)
+        # grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else -1, n_iter=10)
         grid_search.fit(X_sample, y_sample)
 
         # print("Best parameters:", grid_search.best_params_)
@@ -181,7 +181,7 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
                 data = read_h5(path, start=i, chunk_size=batch_size)
 
                 # Train data inputs X and labels y
-                X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+                X = np.array(data["emb_tensor"]).reshape(len(data["emb_tensor"]), -1) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
                 y = np.array(data["label"])
 
                 # Fit model
@@ -192,7 +192,7 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
             data = read_h5(path)
 
             # Train data inputs X and labels y
-            X = np.array([element.ravel().tolist() for element in data["emb_tensor"]]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+            X = np.array(data["emb_tensor"]).reshape(len(data["emb_tensor"]), -1) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
             y = np.array(data["label"])
 
             # Fit model

@@ -10,10 +10,10 @@ paddings = ["head", "tail", "split"]
 # variations = ["hold_out"]
 sizes = ["512", "256"]
 
-# embeddings = ["bert"]
-# paddings = ["split"]
+embeddings = ["bert"]
+paddings = ["split"]
 variations = ["train_sliced_stair_twitter"]
-# sizes = ["512"]
+sizes = ["512"]
 
 for model in models:
     for emb in embeddings:
@@ -22,7 +22,7 @@ for model in models:
                 for variation in variations:
                     # Slurm properties
                     job_name = f"train_embeddings_{model}_{variation}_{emb}_{padding}_{size}"
-                    out = f"out/train_embeddings/{model}_{variation}_{emb}_{padding}_{size}.out"
+                    out = f"out/train_embeddings_griddy/{model}_{variation}_{emb}_{padding}_{size}.out"
 
                     # Python properties
                     feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / f"{variation}_{emb}_{padding}{'_256' if size == '256' else ''}.h5")
