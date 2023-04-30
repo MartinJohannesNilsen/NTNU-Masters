@@ -1,6 +1,6 @@
 import subprocess
 
-embeddings = ["glove", "glove_50", "fasttext", "bert"]
+embeddings = ["glove_50"] #["glove", "glove_50", "fasttext", "bert"]
 paddings = ["head", "tail", "split"]
 lengths = ["512", "256"]
 
