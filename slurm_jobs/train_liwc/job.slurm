@@ -1,10 +1,10 @@
 #!/bin/sh
-#SBATCH --partition=GPUQ
-##SBATCH --partition=CPUQ
+##SBATCH --partition=GPUQ
+#SBATCH --partition=CPUQ
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
 #SBATCH --time=96:00:00
-#SBATCH --mem=32G
+#SBATCH --mem=32000
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
@@ -26,6 +26,7 @@ echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
+awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
 
 # Load idun modules
 module purge
@@ -45,10 +46,9 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "f1"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall"
-python3 train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
-#python3 train_sklearn.py $feature_path --model $model
+echo "Recall-F1"
+python3 -u train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
+#python3 -u train_sklearn.py $feature_path --model $model
 
 # Print idun stats
 uname -a

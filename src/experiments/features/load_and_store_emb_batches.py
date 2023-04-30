@@ -8,7 +8,7 @@ import os
 import sys
 import torch
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
-from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vectors, get_bert_word_embeddings, get_ft_model, get_glove_model, get_bert_test
+from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vectors, get_bert_word_embeddings, get_ft_model, get_glove_model
 import h5py
 import numpy as np
 from transformers import AutoTokenizer, AutoModel, pipeline
@@ -36,7 +36,6 @@ def replace_text_with_embedding(df: pd.DataFrame, emb_type: str = "glove", emb_d
 
     return df
 
-    
     
 def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, step_size: int = 200, emb_dim: int = 300, sentence_length: int = 512, emb_model = None):
     """
@@ -157,7 +156,7 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
     store.close()
 
 
-def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False) -> Union[list, dict]:
+def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False, keep_tensor_as_ndarray = False) -> Union[list, dict]:
     """Function to fetch data from h5py data store. For alleviating memory constraints with large embeddings sizes, parameters 'start' and 'chunk_size' can be utilized for fetching given range.
 
     Args:
@@ -182,7 +181,7 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
                 elif col_name in ["idx", "label"]:
                     fetched_data = fetched_data.astype(int)
                 elif col_name == "emb_tensor":
-                    fetched_data = [torch.from_numpy(tensor) for tensor in fetched_data]
+                    fetched_data = [ndarray if keep_tensor_as_ndarray else torch.from_numpy(ndarray) for ndarray in fetched_data]
             else:
                 print("Non-existent column name!")
                 sys.exit(0)
@@ -190,7 +189,7 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
             fetched_data = {
                 "idx": list(f["idx"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int)),
                 "date": list(f["date"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
-                "emb_tensor": [torch.from_numpy(tensor) for tensor in (f["emb_tensor"][start:start+chunk_size] if (start != None and chunk_size != None) else f["emb_tensor"])],
+                "emb_tensor": [ndarray if keep_tensor_as_ndarray else torch.from_numpy(ndarray) for ndarray in (f["emb_tensor"][start:start+chunk_size] if (start != None and chunk_size != None) else f["emb_tensor"])],
                 "name": list(f["name"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
                 "label": list(f["label"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int))
             }
@@ -308,7 +307,6 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, padding = None, purpos
             create_and_store_embeddings(embedding_hold_out_df, out_path / f"hold_out_{emb_type}_{pad_type}_256.h5", emb_type.replace("_50", ""), 200, emb_dim = 50 if emb_type == "glove_50" else 300, sentence_length=256, emb_model=emb_model)
             embedding_hold_out_df = None
 
-
 click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("--emb", type=click.Choice(["glove", "glove_50", "fasttext", "bert"]), default="glove", help="")
@@ -323,5 +321,5 @@ def main(emb, padding, purpose, size, no_stair_twitter):
 
 if __name__ == "__main__":
     dfs = get_dfs()
-    create_and_store_all_embs_of_type_no_len(dfs, emb_type="fasttext", padding="tail", purpose="train", size="256", no_stair_twitter=False)
+    #create_and_store_all_embs_of_type_no_len(dfs, emb_type="fasttext", padding="tail", purpose="train", size="256", no_stair_twitter=False)
     create_and_store_all_embs_of_type(dfs, emb_type="fasttext", padding="tail", purpose="test", size="256", no_stair_twitter=False)
