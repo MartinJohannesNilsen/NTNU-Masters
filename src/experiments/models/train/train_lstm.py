@@ -23,7 +23,6 @@ import numpy as np
 from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
 from experiments.utils.word_embeddings import get_padded_ids, create_vocab_w_idx, get_emb_matrix
-from csv import QUOTE_NONE
 
 print(f"device: {device}")
 

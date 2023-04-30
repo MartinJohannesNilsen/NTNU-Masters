@@ -321,5 +321,5 @@ def main(emb, padding, purpose, size, no_stair_twitter):
 
 if __name__ == "__main__":
     dfs = get_dfs()
-    create_and_store_all_embs_of_type_no_len(dfs, emb_type="fasttext", padding="tail", purpose="train", size="256", no_stair_twitter=False)
+    #create_and_store_all_embs_of_type_no_len(dfs, emb_type="fasttext", padding="tail", purpose="train", size="256", no_stair_twitter=False)
     create_and_store_all_embs_of_type(dfs, emb_type="fasttext", padding="tail", purpose="test", size="256", no_stair_twitter=False)
