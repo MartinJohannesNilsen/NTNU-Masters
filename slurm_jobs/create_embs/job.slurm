@@ -7,12 +7,13 @@
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
-##SBATCH --nodes=1                          # 1 compute nodes
+##SBATCH --nodes=1    
+#SBATCH --job-name=name                      # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --mail-user=martijni@stud.ntnu.no
+#SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=emb,padding,purpose,size
+#SBATCH --export=emb,length,pad_pos
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -44,9 +45,8 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
-# python3 load_and_store_emb_batches.py --emb $emb --padding $padding --purpose $purpose --size $size
-python3 load_and_store_emb_batches.py --no-stair-twitter --emb $emb --padding $padding --purpose $purpose --size $size
+cd "src/experiments/utils"
+python3 create_and_store_embs.py --emb $emb --length $length --pad_pos $pad_pos
 
 # Print idun stats
 uname -a

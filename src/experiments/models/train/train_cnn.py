@@ -5,8 +5,6 @@ import torch
 import sys
 import csv
 # sys.exit(1)
-sys.path.append(str(Path(os.path.abspath(__file__)).parents[3]))
-sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
 # src/experiments/utils
 from torch.utils.data import DataLoader, Dataset
 import torch
