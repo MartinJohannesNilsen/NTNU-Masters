@@ -7,6 +7,7 @@ import time
 import pickle
 from sklearn.metrics import make_scorer, recall_score   
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, KFold, StratifiedKFold, train_test_split
+import joblib
 from tabulate import tabulate
 import sys
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
@@ -63,7 +64,7 @@ grid_search_params = {
 """
 grid_search_params = {
     "svm" : (SVC(), {
-        'C': np.logspace(-3, 3, 7),
+        'C': [0.01, 0.1, 1, 10, 100],
         'kernel': ['linear', 'rbf', 'sigmoid'],
         # 'degree': [2, 3, 4, 5],
         'gamma': ['scale', 'auto']}),
@@ -82,16 +83,17 @@ grid_search_params = {
         'metric': ['euclidean', 'manhattan', 'minkowski']}),
     "xgboost": (XGBClassifier(eval_metric='logloss'), {
         'n_estimators': range(50, 301, 50),
-        'learning_rate': [0.01, 0.05, 0.1, 0.5],
+        'learning_rate': [0.01, 0.05, 0.1],
         # 'max_depth': range(3, 11),
         # 'min_child_weight': range(1, 7),
         # 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         # 'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        'gamma': [0, 0.1, 0.2, 0.3, 0.4, 0.5]}),
+        'gamma': [0, 1, 10]}),
     "gaussian": (GaussianProcessClassifier(), {
-        'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.WhiteKernel()],
-        'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
-        'n_restarts_optimizer': [0, 1, 2, 3, 4],
+        # 'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.WhiteKernel()],
+        'kernel': [kernels.DotProduct() + kernels.WhiteKernel(), kernels.RBF(length_scale=1.0) + kernels.WhiteKernel()],
+        # 'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
+        #'n_restarts_optimizer': [0, 1, 2, 3, 4],
         # 'max_iter_predict': [50, 100, 150, 200]
         })
 }
@@ -123,7 +125,7 @@ def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
     return model_path
 
 # Training
-def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1", random_search = True):
+def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1", random_search = False):
 
     # Get model
     model = _get_model(model_type)
@@ -150,14 +152,14 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         y = np.array(labels)
 
         # Split dataaset into 60% sample
-        sample_size = 0.6
+        sample_size = 0.6 if "liwc" in str(saved_model_dir) else 0.25
         print(f"Sample {sample_size*100}% for search ...")
         start_time = time.time()
         X_sample, _, y_sample, _ = train_test_split(X, y, test_size=(1-sample_size), random_state=42, stratify=y)
         print(f"Created sample in {round(time.time() - start_time, 0)} seconds. Size: {round(X_sample.nbytes / 10**9, 2)}GB")
 
         # Set up cross-validation
-        cv = StratifiedKFold(n_splits=5)
+        cv = StratifiedKFold(n_splits=3)
 
         # Define scoring metrics
         scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'recall_f1': make_scorer(combined_recall_f1, greater_is_better = True), 'precision': make_scorer(precision_score)}
@@ -165,10 +167,17 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         # Run search
         print(f"Running hyperparameter search ...")
         start_time = time.time()
-        if random_search:
-            grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else 1, n_iter=10)
+        # memory = joblib.Memory(location=str(Path(os.path.abspath(__file__)).parents[4] / 'resources' / ".sklearn_cache"), verbose=0)
+        if "liwc" in str(saved_model_dir):
+            if random_search:
+                grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1, random_state=42, n_iter=10)
+            else:
+                grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1)
         else:
-            grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1 if "liwc" in str(saved_model_dir) else 1)
+            if random_search:
+                grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, random_state=42, n_iter=10, n_jobs=1) # pre_dispatch=1, memory=memory
+            else:
+                grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=1)
         grid_search.fit(X_sample, y_sample)
         print(f"Finished search in {round(time.time() - start_time, 0)} seconds")
 
