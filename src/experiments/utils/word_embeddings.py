@@ -14,6 +14,8 @@ from pathlib import Path
 from math import floor
 import numpy as np
 import pandas as pd
+import sys
+import nltk
 
 cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_cache"
 
@@ -121,6 +123,45 @@ def _tokenize_with_preprocessing(text: str, remove_url: bool = True):
     return cleaned_words
 
 
+def _tokenize_with_preprocessing_ft(text: str, remove_url: bool = True):
+    """For the embedders needing tokenized input. The method perform certain steps of text cleaning:
+        - Stopword removal
+        - Url replacement (token or removal)
+        - Username removal
+        - Hashtag removal
+        - Character normalization
+
+    Args:
+        text (str): Input string.
+        remove_url (bool, optional): Removes url completely. Defaults to True.
+
+    Returns:
+        List[str]: List of tokens
+    """
+    soup = BeautifulSoup(text, "html.parser")
+    text = soup.get_text()
+
+    #tokenizer = RegexpTokenizer("[\w']+")
+    words = nltk.word_tokenize(text)
+
+    url_replacement = "" if remove_url else "URLHYPERLINK"
+
+    cleaned_words = []
+    for word in words:
+        word = word.lower()
+        if word not in stopwords.words("english"):
+            word = re.sub(r'http+|www+', url_replacement, word) # Replace urls with chosen string or remove completely
+            word = re.sub(r'@[^ ]+', '', word) # Remove usernames in the context of Twitter posts
+            word = re.sub(r'#', '', word) # Remove hashtags and keep words
+            #word = re.sub(r'[^a-zA-Z0-9\s]', '', word) # ADDED AFTER WE MADE EMBS!!!!! Remove more special chars
+            word = re.sub(r'([A-Za-z])\1{2,}', r'\1', word) # Character normalization, prevent words with letters repeated more than twice
+
+            if word != "":
+                cleaned_words.append(word)
+
+    return cleaned_words
+
+
 def get_bert_word_embeddings(input: str or List[str], pretrained_name = "bert-base-uncased", sentence_length: int = None, pad_pos: str = "tail"):
     """Generates BERT word embeddings, using the Transformers pipeline. NB! The batch dimension is squeezed out as default.
 
@@ -180,23 +221,24 @@ def get_emb_matrix(emb_dim, emb_type, vocab_len, word_to_index):
 
     with open(path, "r+", encoding="utf-8") as f:
         for idx, line in enumerate(f):
-            elem = line.split(" ")
+            elem = line.replace("\n", "").strip().split(" ")
             word = elem[0]
 
             if word not in word_to_index:
                 continue
 
             word_idx = word_to_index[word]
-
             if word_idx <= vocab_len:
                 embed_mat[word_idx] = np.asarray(elem[1:], dtype='float32')
 
     return embed_mat
 
+
 def split_safe(text):
     return str(text).split(" ")
 
-def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True):
+
+def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True, tk_type: str = "nltk"):
     """
     Input:
         df: Pandas dataframe containing a 'text' column
@@ -205,8 +247,10 @@ def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True):
         dict: A dictionary containing all unique words in vocab and their counts
     """
     if not is_preprocessed:
-        df["text"] = df["text"].map(lambda a: _tokenize_with_preprocessing(a))
-
+        if tk_type == "nltk":
+            df["text"] = df["text"].map(lambda a: _tokenize_with_preprocessing_ft(a))
+        else:
+            df["text"] = df["text"].map(lambda a: _tokenize_with_preprocessing(a))
 
     counts = {}
     for row in df["text"].map(lambda a: split_safe(a)):
@@ -257,8 +301,9 @@ def pad_ids(ids, pad_pos, max_len):
             front_pad += end_pad
             ids = front_pad
             
-    elif length > sentence_length:
+    elif length > max_len:
         ids = ids[:max_len]
+        length = max_len
 
     return np.array(ids), length
 

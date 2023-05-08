@@ -109,6 +109,7 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_model, step_si
         rows["text"] = rows["text"].map(lambda text: embed_and_pad(text, emb_model=emb_model, max_len=max_len, pad_pos=pad_pos))
         rows = rows[rows['text'].notna()]
 
+
         res_rows = rows["text"].copy().values
         
         emb_rows = []

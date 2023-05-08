@@ -114,6 +114,7 @@ def embed_text(text:str, emb_model):
 
 def pad_embeddings(embeddings, max_len: int, pad_pos: str):
     emb_dim = embeddings.shape[1]
+    seq_len = embeddings.shape[0]
 
     if embeddings.shape[0] < max_len:
         req_padding = max_len - embeddings.shape[0]
@@ -132,8 +133,9 @@ def pad_embeddings(embeddings, max_len: int, pad_pos: str):
             
     elif embeddings.shape[0] > max_len:
         embeddings = embeddings[:max_len, :]
+        seq_len = max_len
 
-    return embeddings
+    return embeddings, seq_len
 
 
 def embed_and_pad(text: str, emb_model, max_len: int, pad_pos: str):
@@ -141,8 +143,8 @@ def embed_and_pad(text: str, emb_model, max_len: int, pad_pos: str):
     if not res:
         return
     
-    embs, seq_len = res
-    embs = pad_embeddings(embs, max_len=max_len, pad_pos=pad_pos)
+    embs, _ = res
+    embs, seq_len = pad_embeddings(embs, max_len=max_len, pad_pos=pad_pos)
     
     return embs, seq_len
 
@@ -255,8 +257,8 @@ def tokenize_and_pad(text, word_to_idx, pad_pos, max_len):
 if __name__ == "__main__":
     model = get_emb_model("bert")
 
-    test = "This is a test txt"
-    embs, length = embed_text(test, model)
+    test = "This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul This is a test txt jonas er kul"
+    embs, length = embed_and_pad(test, model, max_len=6, pad_pos="tail")
     print(embs)
     print(length)
     print(test)
@@ -271,4 +273,4 @@ if __name__ == "__main__":
     print(embs)
     print(length) """
 
-    print(pad_embeddings(embs, 9, "head"))
+    #print(pad_embeddings(embs, 9, "head"))
