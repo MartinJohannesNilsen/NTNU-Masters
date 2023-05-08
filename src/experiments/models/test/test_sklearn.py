@@ -11,7 +11,7 @@ import pandas as pd
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
 from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, get_posts_ordered_by_confusion_matrix, print_tabulated_metric_iterations
-from experiments.features.load_and_store_emb_batches import read_h5
+from experiments.features._load_and_store_emb_batches import read_h5
 
 
 def test_embeddings(model_path, test_path, batch_size: int = None):

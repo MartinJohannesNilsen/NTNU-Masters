@@ -12,7 +12,7 @@ import sys
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
 from experiments.utils.metrics import get_metrics, get_average_metrics
-from experiments.features.load_and_store_emb_batches import read_h5
+from experiments.features._load_and_store_emb_batches import read_h5
 # Models
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB

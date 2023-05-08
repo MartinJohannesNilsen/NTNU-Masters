@@ -72,7 +72,7 @@ def make_train_test_val(df, train_ratio: int = 0.8, val_ratio: int = 0.4):
 
 def write_to_file(df, stair_str):
     
-    split_512_df = make_split_df(df.copy(), 256)
+    split_512_df = make_split_df(df.copy(), 512)
     train, test, val = make_train_test_val(split_512_df)
     train.to_csv(out_folder / f"train_{stair_str}_twitter_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
     test.to_csv(out_folder / f"test_{stair_str}_twitter_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
@@ -84,7 +84,7 @@ def write_to_file(df, stair_str):
     train.to_csv(out_folder / f"train_{stair_str}_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)
     test.to_csv(out_folder / f"test_{stair_str}_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)
     val.to_csv(out_folder / f"val_{stair_str}_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)
-    split_512_df, train, test, val = None, None, None, None
+    split_256_df, train, test, val = None, None, None, None
 
 if __name__ == "__main__":
     _find_field_size_limit()

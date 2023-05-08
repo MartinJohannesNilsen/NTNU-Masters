@@ -1,5 +1,5 @@
 from typing import List
-from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score
+from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, roc_auc_score, recall_score, precision_score, f1_score
 from collections import defaultdict
 from tabulate import tabulate
 
@@ -127,6 +127,10 @@ def get_posts_ordered_by_confusion_matrix(texts: List[str], predictions: List[fl
                 text_dicts["fn"].append(texts[i])
     return text_dicts
 
+def combined_recall_f1(y_true, y_pred, recall_weight=0.5):
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    return recall_weight * recall + (1 - recall_weight) * f1
 
 if __name__ == "__main__":
 

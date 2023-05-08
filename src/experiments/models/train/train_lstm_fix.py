@@ -124,6 +124,7 @@ class LSTMTextClassifier(nn.Module):
 
         out_forward = out[range(len(out)), [(s-1) for s in seq_len], :self.hidden_size]
         out_backwards = out[:, 0, self.hidden_size:]
+        print(out_forward)
 
         out_reduced = torch.cat((out_forward, out_backwards), 1) # Concat for fc layer and final pred
         out_dropped = self.dropout(out_reduced) # Dropout layer
@@ -139,7 +140,7 @@ def check_mem_usage():
     print("torch.cuda.max_memory_reserved: %fMB"%(torch.cuda.max_memory_reserved(0)/1024/1024))
 
 
-def train(emb_type: str, emb_dim: int, pad_pos: str = "tail", num_epochs: int = 10, max_len: int = 256, batch_size: int = 32):
+def train(emb_type: str, emb_dim: int, pad_pos: str = "tail", num_epochs: int = 10, max_len: int = 256, batch_size: int = 100):
     # 222
 
     # Read data
@@ -253,7 +254,6 @@ def train(emb_type: str, emb_dim: int, pad_pos: str = "tail", num_epochs: int = 
         model.train(True)
         avg_loss = run_epoch()
 
-
         print("validating")
         model.train(False)
 
@@ -262,9 +262,10 @@ def train(emb_type: str, emb_dim: int, pad_pos: str = "tail", num_epochs: int = 
         running_vloss = 0.0
         with torch.no_grad():
             for vdata in val_loader:
-                vinputs, vlabels, vlengths = vdata
+                vinputs, vlabels = vdata
                 vinputs = torch.from_numpy(np.array(vinputs)).to(device)
 
+                vlengths = get_seq_len(vinputs)
                 v_out = model(vinputs, vlengths)
 
                 [true_vlabels.append(vlabel) for vlabel in vlabels]
@@ -294,7 +295,7 @@ def train(emb_type: str, emb_dim: int, pad_pos: str = "tail", num_epochs: int = 
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            model_path = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "cnn" / f"model_{embedding_type}_{embedding_dim}_{sentence_length}_{timestamp}_{epoch_number}")
+            model_path = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "cnn" / f"model_{emb_type}_{emb_dim}_{max_len}_{timestamp}_{epoch}")
             torch.save(model.state_dict(), model_path)
 
     all_metrics = []
@@ -311,4 +312,4 @@ def train(emb_type: str, emb_dim: int, pad_pos: str = "tail", num_epochs: int = 
     #wandb.finish()
 
 if __name__ == "__main__":
-    train(emb_type="glove", pad_pos="head", num_epochs=10, max_len=256, emb_dim=300)
+    train(emb_type="glove", pad_pos="head", num_epochs=10, max_len=256, emb_dim=300, batch_size=1)

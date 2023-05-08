@@ -3,7 +3,7 @@ import subprocess
 embeddings = ["glove", "glove_50", "fasttext", "bert"]
 paddings = ["head", "tail", "split"]
 purposes = ["train", "test", "hold_out"]
-lengths = ["512", "256"]
+lengths = ["512"]
 
 for emb in embeddings:
     for length in lengths:

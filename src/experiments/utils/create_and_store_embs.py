@@ -239,10 +239,11 @@ def main(emb, length, pad_pos):
 if __name__ == "__main__":
     main()
     
-    """ dfs = get_dfs()
-    create_and_store_all_embs_of_type(dfs, "glove_50", step_size=300)
+    dfs = get_dfs()
+    create_and_store_all_embs_of_type(dfs, "bert", step_size=200)
 
     with h5py.File(out_path / "train_no_stair_twitter_glove_50_head_256.h5", "r") as f:
         print("printing emb tensors for test...")
         for i in range(3):
-            print(f["emb_tensor"][i]) """
+            print(f["emb_tensor"][i])
+    

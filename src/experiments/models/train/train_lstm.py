@@ -24,6 +24,11 @@ from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
 from experiments.utils.word_embeddings import get_padded_ids, create_vocab_w_idx, get_emb_matrix
 from csv import QUOTE_NONE
+import ray
+from ray import tune
+from ray.air import session
+from ray.air.checkpoint import Checkpoint
+from ray.tune.schedulers import ASHAScheduler
 
 print(f"device: {device}")
 
@@ -104,7 +109,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
     # 222
 
     # Read data
-    base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test_preprocessed"
+    base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new" / 
 
     print(f"Fetching data from {base_path}")
 
