@@ -78,7 +78,6 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
 LABEL_DICT = {
     "school_shooters": 1,
     "stair_twitter_archive": 1,
-    "manifestos": 1,
     "stream_of_consciousness": 0,
     "mypersonality": 0,
     "twitter": 0,
@@ -87,7 +86,7 @@ LABEL_DICT = {
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-d", "--dataset", type=click.Choice(["school_shooters", "stair_twitter_archive", "manifestos", "stream_of_consciousness", "mypersonality", "twitter", "all"]), default="school_shooters", help="Folder to create dataframe from")
+@click.option("-d", "--dataset", type=click.Choice(["school_shooters", "stair_twitter_archive", "stream_of_consciousness", "mypersonality", "twitter", "all"]), default="school_shooters", help="Folder to create dataframe from")
 @click.option("-v", "--verbose", type=click.IntRange(0, 2), default=1, help="Verbosity for prints to terminal")
 @click.option("-o", "--out_dir", default=(Path(__file__).parent / "data"), help="Save to folder")
 @click.option("-f", "--format", type=click.Choice(["csv", "xlsx"]), default="csv", help="Save to spreadsheet")

@@ -101,14 +101,14 @@ def print_metrics_comprehensive(metrics: dict):
     print(f"\"Tells us about the capability of model in distinguishing the classes\"")
     print(f"{round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "undefined")
 
-def print_tabulated_metric_iterations(keys: List, list_of_metrics: List[dict]):
+def print_metrics_tabulated(keys: List, list_of_metrics: List[dict]):
     assert len(list_of_metrics) > 0, "List of metrics is empty!"
     assert len(keys) == len(list_of_metrics), "Keys need "
 
-    headers = ["Threshold"] + list_of_metrics[0].keys()
+    headers = ["Key"] + list(list_of_metrics[0].keys())
     table = []
     for i, metrics in enumerate(list_of_metrics):
-        table.append([keys[i]] + metrics.values())
+        table.append([keys[i]] + list(metrics.values()))
 
     print(tabulate(table, headers=headers))
 

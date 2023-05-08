@@ -110,8 +110,8 @@ def train(
         output_dir = saved_model_checkpoints,          
         logging_dir = log_path,            
         num_train_epochs = num_epochs,     
-        per_device_train_batch_size = 32,   
-        per_device_eval_batch_size = 20,   
+        per_device_train_batch_size = 32, # 16, 32, 64   
+        per_device_eval_batch_size = 64,   
         weight_decay = 0.01,               
         learning_rate = 2e-5,
         save_total_limit = 10,
@@ -141,18 +141,19 @@ def train(
         test_dataset = MakeTorchData(test_encodings, y_test.ravel())
         trainer.eval_dataset = test_dataset
         trainer.evaluate()
+        
 
 click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("-m", "--model", type=click.Choice(["distilbert-base-uncased", "bert-base-uncased", "roberta-base", "albert-base-v2"]), default="distilbert-base-uncased", help="Model name")
-@click.option("-s", "--size", type=click.Choice([512, 256]), default="512", help="Text max length")
-@click.argument("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter", help="Dataset to use")
+@click.option("-s", "--size", type=click.Choice(["512", "256"]), default="512", help="Text max length")
+@click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter", help="Dataset to use")
 def main(model, size, dataset):
     # Parameters
     VAL_PORTION = 0.2
-    MAX_LENGTH = size
+    MAX_LENGTH = int(size)
     NUM_EPOCHS = 5
-    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model)
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model / dataset)
     LOG_PATH = "./logs"
 
     # Data
