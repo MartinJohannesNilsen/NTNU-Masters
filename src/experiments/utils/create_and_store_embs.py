@@ -89,7 +89,7 @@ def read_h5(fpath: str, col_name = None, start: int = None, chunk_size: int = No
     return fetched_data
 
 
-def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_model, step_size: int = 200, max_len: int = 512, pad_pos: str = "tail"):
+def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_model, step_size: int = 200, max_len: int = 512, pad_pos: str = "tail", emb_type: str = "glove"):
     """
     Function to create and store embeddings to file with given step size. Helps alleviate memory constraints with large embeddings sizes
 
@@ -106,7 +106,7 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_model, step_si
 
     def embed_rows_as_numpy(rows):
         rows["date"] = rows["date"].map(lambda a: replace_empty(a)) # Avoid conflict with h5py. None is treated as object type. Convert None to " "
-        rows["text"] = rows["text"].map(lambda text: embed_and_pad(text, emb_model=emb_model, max_len=max_len, pad_pos=pad_pos))
+        rows["text"] = rows["text"].map(lambda text: embed_and_pad(text, emb_model=emb_model, max_len=max_len, pad_pos=pad_pos, emb_type=emb_type))
         rows = rows[rows['text'].notna()]
 
         res_rows = rows["text"].copy().values
@@ -217,17 +217,17 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, pad_pos = None, step_s
 
     emb_model = get_emb_model(emb_type)
     purpose = ["train", "test", "val"]
-    stair_twitter = ["no_stair", "sliced_stair"]
+    stair_twitter = ["sliced_stair", "no_stair"]
 
     for p in purpose:
         for st in stair_twitter:
             print(f"Type: {emb_type}, {p}, {pad_pos}, {st}, {max_len}")
             df = dfs[f"{p}_{st}_twitter_{max_len}"].copy()
-            create_and_store_embeddings(df, fpath=out_path / f"{p}_{st}_twitter_{emb_type}{name_to_dim[emb_type]}_{pad_pos}_{max_len}.h5", emb_model=emb_model, step_size=step_size, max_len=max_len, pad_pos=pad_pos)    
+            create_and_store_embeddings(df, fpath=out_path / f"{p}_{st}_twitter_{emb_type}{name_to_dim[emb_type]}_{pad_pos}_{max_len}.h5", emb_model=emb_model, step_size=step_size, max_len=max_len, pad_pos=pad_pos, emb_type=emb_type)    
             df = None
 
 @click.command()
-@click.option("-e", "--emb", type=click.Choice(["fasttext", "glove", "bert"]) , help="Embedding type to be used for training")
+@click.option("-e", "--emb", type=click.Choice(["fasttext", "glove", "bert", "glove_50"]) , help="Embedding type to be used for training")
 @click.option("-l", "--length", type=click.INT, help="Max length of sequence")
 @click.option("-p", "--pad_pos", type=click.Choice(["head", "tail", "split"]), help="Position of padding")
 def main(emb, length, pad_pos):

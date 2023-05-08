@@ -6,6 +6,7 @@ from transformers.pipelines.feature_extraction import FeatureExtractionPipeline
 from nltk.tokenize import RegexpTokenizer
 from nltk.corpus import stopwords
 from torchtext.vocab import FastText, GloVe
+from nltk import word_tokenize
 import re
 import os
 from pathlib import Path
@@ -19,7 +20,7 @@ cache_dir = Path(os.path.abspath(__file__)).parents[3] / "resources" / ".vector_
 
                                         ### PREPROCESSING ###
 
-def tokenize_with_preprocessing(text: str, remove_url: bool = True):
+def tokenize_with_preprocessing(text: str, remove_url: bool = True, emb_type: str = "glove"):
     """For the embedders needing tokenized input. The method perform certain steps of text cleaning:
         - Stopword removal
         - Url replacement (token or removal)
@@ -37,9 +38,11 @@ def tokenize_with_preprocessing(text: str, remove_url: bool = True):
 
     soup = BeautifulSoup(text, "html.parser")
     text = soup.get_text()
+    
+    words = RegexpTokenizer("[\w']+").tokenize(text) if emb_type != "fasttext" else word_tokenize(text)
 
-    tokenizer = RegexpTokenizer("[\w']+")
-    words = tokenizer.tokenize(text)
+    """ tokenizer = RegexpTokenizer("[\w']+")
+    words = tokenizer.tokenize(text) """
 
     url_replacement = "" if remove_url else "URLHYPERLINK"
 
@@ -90,7 +93,7 @@ def get_emb_model(model_name: str):
 
 # UTILS TO PRE-COMPUTE EMBEDDINGS FOR LATER STORAGE
 
-def embed_text(text:str, emb_model):
+def embed_text(text:str, emb_model, emb_type):
 
     embs, tokens_len = None, None
 
@@ -101,7 +104,7 @@ def embed_text(text:str, emb_model):
 
     # Glove and fasttext
     else:
-        processed_text, tokens_len = tokenize_with_preprocessing(text, remove_url=True)
+        processed_text, tokens_len = tokenize_with_preprocessing(text, remove_url=True, emb_type=emb_type)
        
         # If preprocessing ends up removing whole text, stop
         if len(processed_text) == 0:
@@ -138,8 +141,8 @@ def pad_embeddings(embeddings, max_len: int, pad_pos: str):
     return embeddings, seq_len
 
 
-def embed_and_pad(text: str, emb_model, max_len: int, pad_pos: str):
-    res = embed_text(text, emb_model)
+def embed_and_pad(text: str, emb_model, max_len: int, pad_pos: str, emb_type: str):
+    res = embed_text(text, emb_model, emb_type)
     if not res:
         return
     
@@ -220,7 +223,6 @@ def create_vocab_w_idx(df: pd.DataFrame, is_preprocessed: bool = True):
     counts = {}
     for row in df["text"].map(lambda a: _split_safe(a)):
         for word in row:
-            word = str(word)
             if word not in counts:
                 counts[word] = 1
             else:

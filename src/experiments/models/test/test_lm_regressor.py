@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from typing import List
 import click
+import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import pandas as pd
@@ -13,28 +14,24 @@ import csv
 csv.field_size_limit(sys.maxsize)
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
-from experiments.utils.metrics import get_metrics, print_metrics_comprehensive
+from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, print_metrics_tabulated
 
-
-def _get_dataframe(dataset: str = "all_labeled"):
-    # Extract basepath
-    base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
-    # Define all possible datasets
-    datasets = {
-        "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
-        "test_sliced_stair_twitter": base_path / "train_test" / "test_sliced_stair_twitter.csv",
-        "hold_out_test_sliced_stair_twitter": base_path / "train_test" / "hold_out_test_sliced_stair_twitter.csv",
-        # "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
-        # "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
-        # "all_labeled": base_path / "all_labeled.csv",
-        # "all": base_path / "all.csv",
-        # "manifestos": base_path / "manifestos.csv",
-        # "mypersonality": base_path / "mypersonality.csv",
-        # "school_shooters": base_path / "school_shooters.csv",
-        # "stair_twitter_archive": base_path / "stair_twitter_archive.csv",
-        # "stream_of_consciousness": base_path / "stream_of_consciousness.csv",
-        # "twitter": base_path / "twitter.csv",
-    }
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
+datasets = {
+    "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
+    "train_sliced_stair_twitter_256": base_path / "train_test" / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
+    "train_no_stair_twitter_256": base_path / "train_test" / "train_no_stair_twitter_256.csv",
+    
+    "test_sliced_stair_twitter": base_path / "train_test" / "test_sliced_stair_twitter.csv",
+    "test_sliced_stair_twitter_256": base_path / "train_test" / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
+    "test_no_stair_twitter_256": base_path / "train_test" / "test_no_stair_twitter_256.csv",
+    
+    "shooter_hold_out_test": base_path / "train_test" / "shooter_hold_out_test.csv",
+    "shooter_hold_out_test_256": base_path / "train_test" / "shooter_hold_out_test_256.csv",
+}
+def _get_dataframe(dataset: str = "test_sliced_stair_twitter"):
 
     # Read csv
     df = pd.read_csv(datasets[dataset], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
@@ -69,15 +66,11 @@ def inference(
 def test(
         texts: List[str],
         labels: List[str], 
-        checkpoint: Path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert-base-uncased" / "checkpoint-50", 
+        tokenizer,
+        model, 
         thresholds: List[float] = [0.5],
-        model_name: str = "distilbert-base-uncased",
         max_length: int = 512
         ):
-    
-    # Initialize tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels = 1, local_files_only=True)
 
     # Forward pass for all texts
     model.eval()
@@ -89,34 +82,54 @@ def test(
         pred = torch.sigmoid(model_out.logits).tolist()[0][0]
         predictions.append(pred)
 
+    table = []
+    keys = []
     for threshold in thresholds:
-        print(f"\nThreshold = {threshold}")
-        print_metrics_comprehensive(get_metrics(predictions=[1 if pred > threshold else 0 for pred in predictions], labels=labels))
+        keys.append(f"T({threshold})")
+        table.append(get_metrics(predictions=[1 if pred >= threshold else 0 for pred in predictions], labels=labels))
+    print_metrics_tabulated(keys=keys, list_of_metrics=table)
 
 click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("-m", "--model", type=click.Choice(os.listdir(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor")), default="distilbert-base-uncased", help="Model from saved models")
 @click.option("-c", "--checkpoint", default="checkpoint-2130", help="Checkpoint to use")
-@click.option("--max_len", default=512, help="maximum length of texts")
-def main(model, checkpoint, max_len):
+@click.option("-d", "--dataset", default="test_sliced_stair_twitter", help="Dataset to use")
+@click.option("--max_len", default=512, help="Maximum length of texts")
+def main(model, checkpoint, dataset, max_len):
 
     model_path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model
-    assert os.path.isdir(model_path / checkpoint), "Checkpoint not existing!"
-    checkpoint = model_path / checkpoint
+    assert os.path.isdir(model_path / dataset / checkpoint), "Checkpoint not existing!"
+    checkpoint = model_path / dataset / checkpoint
 
     # "inference", "test"
     method = "test"
 
     # Data
-    df = _get_dataframe(dataset="test_sliced_stair_twitter")
+    df = _get_dataframe(dataset=dataset)
 
     if (method == "inference"):
-        print(inference("Are you going to detect me? :)", checkpoint=checkpoint))
+        
+        # Run inference
+        text = "Are you going to detect me? :)"
+        print("Score:", inference(text, checkpoint=checkpoint, model_name=model, max_length=max_len))
+    
+
     elif (method == "test"):
-        texts = df.text.values
-        labels = df.label.values
-        thresholds = [0.55, 0.6, 0.75]
-        test(texts, labels, checkpoint=checkpoint, thresholds=thresholds, model_name = model, max_length = max_len)
+
+        # Initialize tokenizer and model
+        tokenizer = AutoTokenizer.from_pretrained(model)
+        saved_model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels = 1, local_files_only=True)
+
+        # Extract examples and labels (X and y)
+        texts = list(df.text.values)
+        labels = list(df.label.values)
+        
+        # Set thresholds to run for
+        thresholds = np.round(np.arange(0.5, 0.601, 0.0025), 4)
+        # thresholds = [0.5]
+
+        # Run test
+        test(texts, labels, tokenizer, saved_model, thresholds=thresholds, max_length = max_len)
 
         
 if __name__ == "__main__":

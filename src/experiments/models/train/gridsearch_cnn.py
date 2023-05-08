@@ -4,20 +4,60 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from ray import tune
-from ray.air import session
+from ray.air import session, RunConfig
 from ray.air.checkpoint import Checkpoint
+from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
+from ray.tune.experiment.trial import Trial
 from pathlib import Path
 import sys
 import os
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
-sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
 import h5py
-from experiments.utils.metrics import get_metrics
 import click
+from sklearn.metrics import confusion_matrix, roc_auc_score
 
+def get_metrics(predictions, labels) -> dict:
+    """Get a selection of performance metrics.
+
+    Args:
+        predictions (List[float]): List of predictions.
+        labels (List[float]): List of labels.
+
+    Returns:
+        dict: Dictionary of performance metrics.
+    """
+    
+    # Gather performance metrics
+    tn, fp, fn, tp = confusion_matrix(labels, predictions, labels=[0, 1]).ravel()
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    precision = (tp) / (tp + fp)
+    recall = (tp) / (tp + fn)
+    specificity = (tn) / (tn + fp)
+    fscore = 2 * (precision * recall) / (precision + recall)
+    
+    try:
+        roc_auc = roc_auc_score(labels, predictions)
+    except:
+        roc_auc = None
+    
+    # Create dictionary of metrics
+    metrics = {
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "tp": tp,
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "specificity": specificity,
+        "f1_score": fscore,
+        "roc_auc": roc_auc
+    }
+
+    return metrics
 
 # Hyperparam tuning made from guide by https://docs.ray.io/en/latest/tune/examples/tune-pytorch-cifar.html#tune-pytorch-cifar-ref
 
@@ -80,7 +120,7 @@ class TextDatasetH5py(Dataset):
 
     def __len__(self):
         return len(self.f["label"])
-
+        
     def __getitem__(self, idx):
         embs = self.f["emb_tensor"][idx]
         label = self.f["label"][idx]
@@ -118,10 +158,17 @@ def grid_search(config):
 
     model = TextClassifier(emb_dim=config['emb_dim'], dropout=config["dropout"]).to(device)
 
-    base_path = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "embeddings" / "new"
-    train_path = base_path / f"train_sliced_stair_twitter_{config['emb_type']}_{config['emb_dim']}_{config['pad_pos']}_{config['max_len']}.h5"
-    val_path = base_path / f"val_sliced_stair_twitter_{config['emb_type']}_{config['emb_dim']}_{config['pad_pos']}_{config['max_len']}.h5"
+    emb_str = f"{config['emb_type']}_{model_to_dim[config['emb_type']]}" if config["emb_type"] != "glove_50" else config["emb_type"]
 
+    base_path = Path(os.path.abspath(__file__)).parents[6] / "features" / "embeddings" / "new"
+    print(f"base_path: {base_path}")
+    train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
+    val_path = base_path / f"val_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
+
+    print(f"base_path: {base_path}")
+    print(f"train_path: {train_path}")
+    print(f"val_path: {val_path}")
+    
     train_set = TextDatasetH5py(train_path)
     val_set = TextDatasetH5py(val_path)
 
@@ -137,10 +184,11 @@ def grid_search(config):
         model.load_state_dict(model_state)
         optimizer.load_state_dict(optimizer_state)
 
-    optimizer = optim.Adam(model.parameters(), lr=config["lr"], momentum=0.9)
+    optimizer = optim.Adam(model.parameters(), lr=config["lr"])
     class_wts = train_set.get_class_weights()
 
     for epoch in range(10):  # loop over the dataset multiple times
+        print(f"epoch: {epoch}")
         running_loss = 0.0
         for i, data in enumerate(train_loader, 0):
             # get the inputs; data is a list of [inputs, labels]
@@ -153,19 +201,18 @@ def grid_search(config):
                 else:
                     weighting.append(class_wts[1])
 
-            inputs, labels, weighting = inputs.to(device), labels.to(device), weighting.to(device)
+            inputs, labels, weighting = inputs.to(device), labels.to(float).to(device), torch.tensor(weighting).to(device)
             criterion = nn.BCELoss(weight=weighting)
 
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            outputs = model(inputs).to(float)
+            loss = criterion(outputs.squeeze(dim=1), labels)
             loss.backward()
             optimizer.step()
 
-            # print statistics
             running_loss += loss.item()
             
             
@@ -176,11 +223,11 @@ def grid_search(config):
         pred_vlabels = []
         true_vlabels = []
         with torch.no_grad():
-            for i, data in enumerate(val_loader, 0):
-                vinputs, vlabels = data
-                vinputs, vlabels = vinputs.to(device), vlabels.to(device)
+            for i, vdata in enumerate(val_loader, 0):
+                vinputs, vlabels = vdata
+                vinputs, vlabels = vinputs.to(device), vlabels.to(float).to(device)
 
-                voutputs = model(inputs)
+                voutputs = model(vinputs).to(float)
                 [true_vlabels.append(vlabel) for vlabel in vlabels]
                 [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
 
@@ -190,10 +237,11 @@ def grid_search(config):
                         vweighting.append(class_wts[0])
                     else:
                         vweighting.append(class_wts[1])
+                vweighting = torch.tensor(vweighting).to(device)
 
                 criterion = nn.BCELoss(weight=vweighting)
-                loss = criterion(outputs, labels)
-                val_loss += loss.item()
+                vloss = criterion(voutputs.squeeze(dim=1), vlabels)
+                val_loss += vloss.item()
 
         avg_vloss = val_loss/len(val_loader)    
 
@@ -210,24 +258,26 @@ def grid_search(config):
         metrics["epoch"] = epoch
         metrics["avg_train_loss"] = avg_loss
         metrics["loss"] = avg_vloss
+        print(f"metrics:\n{metrics}")
         session.report(metrics, checkpoint=checkpoint)
 
     print("Finished Training")
 
 
 def test_best_model(best_result):
-    cfig = best_result.config
-    best_trained_model = TextClassifier(cfig["emb_dim"], cfig["dropout"])
+    config = best_result.config
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    best_trained_model.to(device)
+    best_trained_model = TextClassifier(emb_dim=config['emb_dim'], dropout=config["dropout"]).to(device)
 
     checkpoint_path = os.path.join(best_result.checkpoint.to_directory(), "checkpoint.pt")
+    print(f"checkpoint_path: {checkpoint_path}")
 
     model_state, optimizer_state = torch.load(checkpoint_path)
     best_trained_model.load_state_dict(model_state)
 
-    base_path = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "embeddings" / "new"
-    test_path = base_path / f"test_sliced_stair_twitter_{cfig['emb_type']}_{cfig['emb_dim']}_{cfig['pad_pos']}_{cfig['max_len']}.h5"
+    emb_str = f"{config['emb_type']}_{model_to_dim[config['emb_type']]}" if config["emb_type"] != "glove_50" else config["emb_type"]
+    base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / "new"
+    test_path = base_path / f"test_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
 
     test_set = TextDatasetH5py(test_path)
     test_loader = DataLoader(test_set, batch_size=32, shuffle=False, pin_memory=True) 
@@ -236,18 +286,15 @@ def test_best_model(best_result):
     pred_labels = []
     with torch.no_grad():
         for data in test_loader:
-            images, labels = data
-            images, labels = images.to(device), labels.to(device)
-            outputs = best_trained_model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            inputs, labels = data
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = best_trained_model(inputs).squeeze()
 
             [true_labels.append(label) for label in labels]
-            [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs[0]]
+            [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
 
     metrics = get_metrics(pred_labels, true_labels)
-    print(f"Best results with config:\n{cfig}")
+    print(f"Best results with config:\n{config}")
     print(f"Got metrics: {metrics}")
 
 
@@ -270,24 +317,58 @@ def main(emb_type: str, max_len: int, pad_pos: str, num_samples=10, max_num_epoc
     }
     scheduler = ASHAScheduler( 
         max_t=max_num_epochs,
-        grace_period=1,
+        grace_period=3,
         reduction_factor=2)
     
+    emb_str = f"{emb_type}_{model_to_dim[emb_type]}" if emb_type != "glove_50" else emb_type
+
+    
+    # Customize reporting to avoid excessive output printing from ray reporter
+    class TrialTerminationReporter(CLIReporter):
+        def __init__(self):
+            super(TrialTerminationReporter, self).__init__()
+            self.num_terminated = 0
+
+        def should_report(self, trials, done=False):
+            """Reports only on trial termination events."""
+            old_num_terminated = self.num_terminated
+            self.num_terminated = len([t for t in trials if t.status == Trial.TERMINATED])
+            return self.num_terminated > old_num_terminated
+
+    custom_reporter = TrialTerminationReporter()
+    custom_reporter.add_metric_column("epoch")
+    custom_reporter.add_metric_column("f1_score")
+    custom_reporter.add_metric_column("avg_train_loss")
+    custom_reporter.add_metric_column("loss")
+
+
     tuner = tune.Tuner(
         tune.with_resources(
             tune.with_parameters(grid_search),
+            resources={"cpu": 1}
         ),
         tune_config=tune.TuneConfig(
-            metric="loss",
-            mode="min",
+            metric="f1_score",
+            mode="max",
             scheduler=scheduler,
             num_samples=num_samples,
         ),
-        param_space=config,
+        run_config=RunConfig(
+            local_dir=str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "cnn"),
+            name=f"model_{emb_str}_{max_len}",
+            progress_reporter=custom_reporter
+        ),
+        param_space=config
     )
     results = tuner.fit()
+
+    """ dfs = {result.log_dir: result.metrics_dataframe for result in results}
+    # Plot by epoch
+    ax = None  # This plots everything on the same plot
+    for d in dfs.values():
+        ax = d.mean_accuracy.plot(ax=ax, legend=False) """
     
-    best_result = results.get_best_result("loss", "min")
+    best_result = results.get_best_result("f1_score", "max")
 
     print("Best trial config: {}".format(best_result.config))
     print("Best trial final validation loss: {}".format(

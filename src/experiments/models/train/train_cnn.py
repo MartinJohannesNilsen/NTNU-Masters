@@ -1,8 +1,9 @@
 import sys 
 import os
 from pathlib import Path
+sys.path.append(str(Path(os.path.abspath(__file__)).parents[3]))
+sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
 import torch
-import sys
 import csv
 # sys.exit(1)
 # src/experiments/utils
@@ -35,28 +36,22 @@ class TextDataset(Dataset):
     def __init__(self, data_path):
         self.data_path = data_path
         self.file = h5py.File(self.data_path, "r")
-        self.data_len = self.file["idx"].shape[0]
-        #print(f"Data length: {self.data_len}")
-
 
     def __len__(self):
-        return self.data_len
-
+        return self.file["idx"].shape[0]
 
     def __getitem__(self, idx):
         features = torch.from_numpy(self.file["emb_tensor"][idx])
-        labels = self.file["label"][idx]
+        label = self.file["label"][idx]
 
-        return features, labels
+        return features, label
     
-
     def get_class_weights(self):
         labels = self.file["label"]
-
         total_texts = labels.shape[0]
+
         num_shooter_texts = sum(labels)
         num_non_shooter_texts = total_texts - num_shooter_texts
-
         non_shooter_wt = total_texts / num_non_shooter_texts
         shooter_wt = total_texts / num_shooter_texts
 
@@ -79,8 +74,6 @@ class TextClassifier(nn.Module):
             for i in range(len(filter_sizes))
         ])
 
-        #self.lstm = nn.LSTM(sentence_len, batch_size, )
-
         self.fc = nn.Linear(np.sum(num_filters), 1)
         self.dropout = nn.Dropout(p=dropout)
         self.sig = nn.Sigmoid() # Sigmoid to squeeze final vals between 0 and 1 to accomodate for binary class prob
@@ -98,11 +91,9 @@ class TextClassifier(nn.Module):
         """
 
         # Input shape: (b, max_len, embed_dim)
-
         # Permute `x_embed` to match input shape requirement of `nn.Conv1d`.
         # Output shape: (b, embed_dim, max_len)
         x_reshaped = x.permute(0, 2, 1)
-        #print(f"size: {x_reshaped.size()}")
 
         # Apply CNN and ReLU. Output shape: (b, num_filters[i], L_out)
         x_conv_list = [F.relu(conv1d(x_reshaped)) for conv1d in self.conv1d_list]
@@ -115,47 +106,39 @@ class TextClassifier(nn.Module):
         # Output shape: (b, sum(num_filters))
         x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
                          dim=1)
-        #print(f"x_fc: {x_fc.size()}")
 
-        #print(f"Size after squeeze and flatten: {x_fc.size()}")
-
-        # Compute logits. Output shape: (b, n_classes)
+        # Output shape: (b, n_classes) ---> (b, 1)
         out = self.fc(self.dropout(x_fc))
-        #print(f"fc_sz: {self.fc.size()}")
 
-        #print(f"output after dropout={0.5} and fc layer: {out}")
-
-        # Squeeze between class 0 and 1 (non-shooter and shooter)
+        # Squeeze between values 0 and 1 (non-shooter and shooter)
         out = self.sig(out)
 
         return out
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(0)
 
-def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sentence_length: int = 256, embedding_dim: int = 300):
-    # 222
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+def train(emb_type: str, pad_pos: str = "tail", num_epochs: int = 10, max_len: int = 256, stair_twitter: bool = True, batch_size: int = 64):
 
     # Read data
-    base_path = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
+    stair_twitter_str = "sliced_stair_twitter" if stair_twitter else "no_stair_twitter"
+    emb_dim = model_to_dim[emb_type]
 
-    emb_str = f"{embedding_type}_{embedding_dim}" if embedding_dim == 50 else f"{embedding_type}"
-    sent_len_str = "" if sentence_length == 512 else f"_{sentence_length}"
-
-
-    train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
-    val_path = base_path / f"test_sliced_stair_twitter_{emb_str}_{pad_pos}{sent_len_str}.h5"
+    base_path = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "embeddings" / "new"
+    train_path = base_path / f"train_{stair_twitter_str}_{emb_type}_{emb_dim}_{pad_pos}_{max_len}.h5"
+    val_path = base_path / f"val_{stair_twitter_str}_{emb_type}_{emb_dim}_{pad_pos}_{max_len}.h5"
 
     # Creating datasets for use with dataloaders
     train_set = TextDataset(train_path)
     val_set = TextDataset(val_path)
 
     # Load dataset
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=False, pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False, pin_memory=True)
+    val_loader = DataLoader(val_set, batch_size=1, shuffle=True, pin_memory=True)
 
     # Create model
-    model = TextClassifier(emb_dim=embedding_dim).to(device)
+    model = TextClassifier(emb_dim=emb_dim).to(device)
 
     # Create loss function and optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -183,7 +166,6 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
                     weighting.append(class_wts[1])
 
             loss_fn = nn.BCELoss(weight=torch.tensor(weighting))
-
             loss = loss_fn(outputs.squeeze(), labels.to(torch.float32)) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
             optimizer.step()
@@ -263,7 +245,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
             best_vloss = avg_vloss
-            model_path = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "cnn" / f"model_{embedding_type}_{embedding_dim}_{sentence_length}_{timestamp}_{epoch_number}")
+            model_path = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "cnn" / f"model_{emb_type}_{emb_dim}_{max_len}_{timestamp}_{epoch_number}")
             torch.save(model.state_dict(), model_path)
 
     all = []
@@ -273,7 +255,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
             out.append(round(metric, 3)) if metric else out.append(None)
         all.append(out)
 
-    print(f"RESULTS FOR TRAINING CNN WITH:\nemb type: {embedding_type}\nemb dim: {embedding_dim}\nsentence length: {sentence_length}\npadding pos: {pad_pos}\nbatch size: {222}\n\n\n")
+    print(f"RESULTS FOR TRAINING CNN WITH:\nemb type: {emb_type}\nemb dim: {emb_dim}\nsentence length: {max_len}\npadding pos: {pad_pos}\nbatch size: {222}\n\n\n")
 
     print(tabulate(all, headers=["Fold", "TN", "FP", "FN", "TP", "Accuracy", "Precision", "Recall", "Specificity", "F1-score", "ROC-AUC", "train_loss", "val_loss"]))
 
@@ -287,7 +269,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 @click.option("-l", "--length", type=click.INT, help="Max length of sentence to be allowed. Determines padding and truncation")
 @click.option("-p", "--pad_pos", type=click.STRING, help="Position to place padding if necessary")
 def main(emb, dim, length, pad_pos):
-    train(embedding_type=emb, pad_pos=pad_pos, num_epochs=10, sentence_length=length, embedding_dim=dim)
+    train(emb_type=emb, pad_pos=pad_pos, num_epochs=10, max_len=length, emb_dim=dim)
 
 if __name__ == "__main__":
-    train(embedding_type="bert", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=756)
+    train(emb_type="bert", pad_pos="tail", num_epochs=10, max_len=256)

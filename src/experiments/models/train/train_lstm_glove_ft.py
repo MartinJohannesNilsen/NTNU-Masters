@@ -3,19 +3,24 @@ import os
 from pathlib import Path
 import torch
 import sys
+import csv
 import pandas as pd
 import time
 # sys.exit(1)
-sys.path.append(str(Path(os.path.abspath(__file__)).parents[3]))
-sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
+path1 = str(Path(os.path.abspath(__file__)).parents[3])
+path2 = str(Path(os.path.abspath(__file__)).parents[2])
+print(f"path1: {path1}")
+print(f"path2: {path2}")
 # src/experiments/utils
 from torch.utils.data import DataLoader, Dataset
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence, pack_sequence
 from datetime import datetime
 import wandb
 device = "cuda" if torch.cuda.is_available() else "cpu"
+import h5py
 import numpy as np
 from experiments.utils.metrics import get_metrics
 from tabulate import tabulate
@@ -64,7 +69,7 @@ class LSTMTextClassifier(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.sig = nn.Sigmoid()
 
-    def forward(self, tokens, length):
+    def forward(self, x, length):
         """Perform a forward pass through the network.
 
         Args:
@@ -72,7 +77,7 @@ class LSTMTextClassifier(nn.Module):
             length: the length of the sequence before padding
         """
 
-        embs = self.embedding(tokens)
+        embs = self.embedding(x)
         packed_input = pack_padded_sequence(embs, length, batch_first=True, enforce_sorted=False)
         packed_out, _ = self.lstm(packed_input)
         out, _ = pad_packed_sequence(packed_out, batch_first=True)
@@ -90,45 +95,18 @@ def check_mem_usage():
     print("torch.cuda.memory_reserved: %fMB"%(torch.cuda.memory_reserved(0)/1024/1024))
     print("torch.cuda.max_memory_reserved: %fMB"%(torch.cuda.max_memory_reserved(0)/1024/1024))
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(0) 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-base_path = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "embeddings" / "new"
-
-model_to_dim = {
-    "glove_50": 50,
-    "glove": 300,
-    "fasttext": 300
-}
-
-def get_data_and_wts(emb_type: str, max_len: int = 256, batch_size: int = 32, stair_twitter: bool = False, pad_pos: str = "tail"):
-    stair_twitter_str = "sliced_stair_twitter" if stair_twitter else "no_stair_twitter"
-    emb_dim = model_to_dim[emb_type]
-
-    train_path = base_path / f"train_{stair_twitter_str}_{emb_type}_{emb_dim}_{pad_pos}_{max_len}.h5"
-    val_path = base_path / f"val_{stair_twitter_str}_{emb_type}_{emb_dim}_{pad_pos}_{max_len}.h5"
-
-    print("Creating datasets...")
-    train_set = TextDatasetH5py(train_path)
-    val_set = TextDatasetH5py(val_path)
-
-    print("Constructing dataloaders...")
-
-    # Load dataset
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=1, shuffle=True, pin_memory=True)
-    class_wts = train_set.get_class_weights() # Make class wts proportional to proportion of class occurences
-
-    return train_loader, val_loader, class_wts
-
 
 def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sentence_length: int = 256, embedding_dim: int = 300, batch_size: int = 32):
+    # 222
 
     # Read data
     base_path = None
     if embedding_type == "glove":
-        base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new_preprocessed"
+        base_path = Path(os.path.abspath(__file__)).parents[7] / "dataset_creation" / "data" / "train_test" / "new_preprocessed"
     elif embedding_type == "fasttext":
-        base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new_preprocessed_nltk"
+        base_path = Path(os.path.abspath(__file__)).parents[7] / "dataset_creation" / "data" / "train_test" / "new_preprocessed_nltk"
 
     print(f"Fetching data from {base_path}")
 
@@ -188,11 +166,9 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
         for i, data in enumerate(train_loader):
             print(f"batch: {i}")
-            t1 = time.time()
             inputs, labels, lengths = data
             labels = labels.to(torch.float32).to(device)
             inputs = torch.from_numpy(np.array(inputs)).to(device)
-            print(f"time taken for getting data: {time.time()-t1}")
 
             #print(f"Shape of input tensor: {inputs.shape}")
             optimizer.zero_grad()
@@ -207,33 +183,14 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
                 else:
                     weighting.append(class_wts[1])
 
-            #weighting = np.array(weighting).reshape((32,))
-
-            #print(f"wts: {weighting}")
-            #print(f"wts shape: {weighting.shape}")
-
             weighting = torch.tensor(weighting).to(device)
-
             loss_fn = nn.BCELoss(weight=weighting)
-            #print(f"pred_labels: {outputs}")
-            """ print(f"pred_labels shape: {outputs.shape}")
-            #print(f"labels: {labels}")
-            print(f"labels shape: {labels.shape}") """
-
-
             loss = loss_fn(outputs.squeeze(dim=1), labels) # Unsqueeze target tensor to allow for batching and same dims for out and target
             loss.backward()
-
             optimizer.step()
-
             running_loss += loss.item()
             
-            # Update reported loss values every 50 steps
-            if i % 50 == 49:
-                last_loss = running_loss / 50
-                running_loss = 0.
-            
-        return last_loss
+        return running_loss / len(train_loader)
 
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -261,7 +218,6 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
     for epoch in range(EPOCHS):
         print(f'EPOCH {epoch}:')
-
 
         # Make sure gradient tracking is on, and do a pass over the data
         model.train(True)
@@ -327,7 +283,7 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
             out.append(round(metric, 3)) if metric else out.append(None)
         all_metrics.append(out)
 
-    print(f"RESULTS FOR TRAINING CNN WITH:\nemb type: {embedding_type}\nemb dim: {embedding_dim}\nsentence length: {sentence_length}\npadding pos: {pad_pos}\nbatch size: {222}\n\n\n")
+    print(f"RESULTS FOR TRAINING CNN WITH:\nemb type: {embedding_type}\nemb dim: {embedding_dim}\nsentence length: {sentence_length}\npadding pos: {pad_pos}\nbatch size: {batch_size}\n\n\n")
 
     print(tabulate(all_metrics, headers=["Fold", "TN", "FP", "FN", "TP", "Accuracy", "Precision", "Recall", "Specificity", "F1-score", "ROC-AUC", "train_loss", "val_loss"]))
 
@@ -335,4 +291,4 @@ def train(embedding_type: str, pad_pos: str = "tail", num_epochs: int = 10, sent
 
 
 if __name__ == "__main__":
-    train(embedding_type="glove", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=300)
+    train(embedding_type="fasttext", pad_pos="tail", num_epochs=10, sentence_length=256, embedding_dim=300)

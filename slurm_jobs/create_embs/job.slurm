@@ -1,9 +1,9 @@
 #!/bin/sh
 ##SBATCH --partition=GPUQ
 #SBATCH --partition=CPUQ
-##SBATCH --partition=
+##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=96:00:00
+#SBATCH --time=140:00:00
 #SBATCH --mem=32G
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
@@ -45,8 +45,8 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-cd "src/experiments/features"
-python3 create_and_store_embs.py --emb $emb --size $size --pad_pos $pad_pos
+cd "src/experiments/utils"
+python3 -u create_and_store_embs.py --emb $emb --length $length --pad_pos $pad_pos
 
 # Print idun stats
 uname -a
