@@ -79,16 +79,17 @@ grid_search_params = {
     "nb" : (GaussianNB(), {}),
     "knn": (KNeighborsClassifier(), {
         'n_neighbors': range(1, 21),
-        'weights': ['uniform', 'distance'],
+        # 'weights': ['uniform', 'distance'],
         'metric': ['euclidean', 'manhattan', 'minkowski']}),
     "xgboost": (XGBClassifier(eval_metric='logloss'), {
         'n_estimators': range(50, 301, 50),
-        'learning_rate': [0.01, 0.05, 0.1],
+        'learning_rate': [0.01, 0.025, 0.05, 0.1],
         # 'max_depth': range(3, 11),
         # 'min_child_weight': range(1, 7),
         # 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         # 'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        'gamma': [0, 1, 10]}),
+        #'gamma': [0, 1, 10]
+        }),
     "gaussian": (GaussianProcessClassifier(), {
         # 'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.WhiteKernel()],
         'kernel': [kernels.DotProduct() + kernels.WhiteKernel(), kernels.RBF(length_scale=1.0) + kernels.WhiteKernel()],
@@ -167,17 +168,18 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         # Run search
         print(f"Running hyperparameter search ...")
         start_time = time.time()
+        verbosity = 1
         # memory = joblib.Memory(location=str(Path(os.path.abspath(__file__)).parents[4] / 'resources' / ".sklearn_cache"), verbose=0)
         if "liwc" in str(saved_model_dir):
             if random_search:
-                grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1, random_state=42, n_iter=10)
+                grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1, random_state=42, n_iter=10, verbose=verbosity)
             else:
-                grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1)
+                grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=-1, verbose=verbosity)
         else:
             if random_search:
-                grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, random_state=42, n_iter=10, n_jobs=1) # pre_dispatch=1, memory=memory
+                grid_search = RandomizedSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, random_state=42, n_iter=10, n_jobs=1, verbose=verbosity) # pre_dispatch=1, memory=memory
             else:
-                grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=1)
+                grid_search = GridSearchCV(classifier, grid_params, scoring=scoring, refit=grid_search_metric, cv=cv, n_jobs=1, verbose=verbosity)
         grid_search.fit(X_sample, y_sample)
         print(f"Finished search in {round(time.time() - start_time, 0)} seconds")
 
