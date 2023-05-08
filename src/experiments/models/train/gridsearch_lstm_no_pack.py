@@ -144,7 +144,6 @@ class TextDatasetH5py(Dataset):
             end = -1
         elif self.pad_pos == "split":
             req_padding = self.max_len - length
-            #print(f"req_padding: {req_padding}")
             start = math.floor(req_padding/2)
             end = start + length - 1
 

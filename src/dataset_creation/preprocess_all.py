@@ -7,7 +7,9 @@ import sys
 from datetime import datetime
 
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
+from experiments.utils.word_emb_utils import tokenize_with_preprocessing
 from experiments.utils.word_embeddings import _tokenize_with_preprocessing_ft
+
 
 # Maxsize of csv field size
 def _find_field_size_limit():
@@ -26,16 +28,22 @@ if __name__ == "__main__":
 
     # Read all labeled data
     data_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new"
-    dest_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new_preprocessed_nltk"
+    dest_folder_ft = Path(os.path.abspath("")) / "data" / "train_test" / "new_preprocessed_ft"
+    dest_folder_glove = Path(os.path.abspath("")) / "data" / "train_test" / "new_preprocessed_glove"
 
     all_fpaths = data_folder.rglob("*.csv")
 
-    def tokenize_and_throw_len(text):
+    def tokenize_and_throw_len_ft(text):
         processed_text, _ = _tokenize_with_preprocessing_ft(text)
+        return processed_text
+    
+    def tokenize_and_throw_len_glove(text):
+        processed_text, _ = tokenize_with_preprocessing(text)
         return processed_text
 
     for fpath in all_fpaths:
         df = pd.read_csv(fpath, sep="‎", quoting=QUOTE_NONE, engine="python")
+        df_ft = df.copy()
         df["text"] = df["text"].map(lambda a: " ".join(_tokenize_with_preprocessing_ft(a)))
 
         stem = Path(fpath).stem

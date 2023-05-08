@@ -72,7 +72,7 @@ def make_train_test_val(df, train_ratio: int = 0.8, val_ratio: int = 0.4):
 
 def write_to_file(df, stair_str):
     
-    split_512_df = make_split_df(df.copy(), 256)
+    split_512_df = make_split_df(df.copy(), 512)
     train, test, val = make_train_test_val(split_512_df)
     train.to_csv(out_folder / f"train_{stair_str}_twitter_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
     test.to_csv(out_folder / f"test_{stair_str}_twitter_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
