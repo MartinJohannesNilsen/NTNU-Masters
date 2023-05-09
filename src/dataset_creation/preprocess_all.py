@@ -4,7 +4,6 @@ import pandas as pd
 from csv import QUOTE_NONE
 import csv
 import sys
-from datetime import datetime
 
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
 from experiments.utils.word_emb_utils import tokenize_with_preprocessing
@@ -26,12 +25,12 @@ if __name__ == "__main__":
 
     # Read all labeled data
     data_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new"
-    dest_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new_preprocessed"
+    dest_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new_preprocessed_ft"
 
     all_fpaths = data_folder.rglob("*.csv")
 
     def tokenize_and_throw_len(text):
-        processed_text, _ = tokenize_with_preprocessing(text)
+        processed_text, _ = tokenize_with_preprocessing(text, emb_type="fasttext")
         return processed_text
 
     for fpath in all_fpaths:
