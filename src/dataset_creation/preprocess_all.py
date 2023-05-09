@@ -24,17 +24,21 @@ if __name__ == "__main__":
     _find_field_size_limit()
 
     # Read all labeled data
-    data_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new"
-    dest_folder = Path(os.path.abspath("")) / "data" / "train_test" / "new_preprocessed_ft"
+    data_folder = Path(os.path.abspath(__file__)).parents[0] / "data" / "train_test" / "new"
+    dest_folder = Path(os.path.abspath(__file__)).parents[0] / "data" / "train_test" / "new_preprocessed"
 
     all_fpaths = data_folder.rglob("*.csv")
 
-    def tokenize_and_throw_len(text):
-        processed_text, _ = tokenize_with_preprocessing(text, emb_type="fasttext")
+    def tokenize_and_throw_len(text, emb_type: str = "glove"):
+        processed_text, _ = tokenize_with_preprocessing(text, emb_type=emb_type)
+
         return processed_text
 
+    print(all_fpaths)
+
     for fpath in all_fpaths:
+        print(fpath)
         df = pd.read_csv(fpath, sep="‎", quoting=QUOTE_NONE, engine="python")
-        df["text"] = df["text"].map(lambda a: " ".join(tokenize_and_throw_len(a)))
+        df["text"] = df["text"].map(lambda a: " ".join(tokenize_and_throw_len(a, emb_type="glove")))
         stem = Path(fpath).stem
         df.to_csv(str(dest_folder / stem) + "_preprocessed.csv", sep="‎", index=False)
