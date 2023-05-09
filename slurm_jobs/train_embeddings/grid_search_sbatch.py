@@ -20,7 +20,7 @@ for emb in embeddings:
                     memory = "500000" if model in ["svm", "xgboost"] and emb == "bert_768" else "200000" if emb == "bert_768" else "100000"
 
                     # Python properties
-                    feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / f"{variation}_{emb}_{padding}_{size}.h5")
+                    feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / "new" / f"{variation}_{emb}_{padding}_{size}.h5")
 
                     # Run sbatch
                     sbatch_cmd = f"sbatch --mem={memory} --job-name={job_name} --output={out} --export=feature_path={feature_path},model={model} slurm_jobs/train_embeddings/grid_search.slurm"
