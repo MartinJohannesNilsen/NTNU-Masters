@@ -60,6 +60,8 @@ def tokenize_with_preprocessing(text: str, remove_url: bool = True, emb_type: st
 
     return cleaned_words, len(cleaned_words)
 
+def tokenize_with_preprocessing_ft(text, remove_url: bool = True):
+
 
 def tokenize_with_preprocessing_drop_len(text, remove_url: bool = True):
     out, _ = tokenize_with_preprocessing(text, remove_url=remove_url)
