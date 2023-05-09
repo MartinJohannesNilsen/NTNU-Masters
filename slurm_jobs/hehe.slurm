@@ -44,8 +44,8 @@ pip install -r requirements.txt --user -q
 
 # Run code
 echo "Running code"
-cd "src/experiments/models/train"
-python3 hehe.py
+cd "src/experiments/features/"
+python3 -u load_and_store_liwc.py
 
 # Print idun stats
 uname -a

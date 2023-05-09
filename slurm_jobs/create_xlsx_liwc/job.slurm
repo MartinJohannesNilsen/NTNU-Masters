@@ -43,8 +43,8 @@ pip install -r requirements.txt --user -q
 
 # Run code
 echo "Running code"
-cd "src/dataset_creation"
-python3 create_xlsx_liwc.py 
+cd "src/dataset_creation/utils/liwc"
+python3 create_xlsx_liwc.py
 
 # Print idun stats
 uname -a
