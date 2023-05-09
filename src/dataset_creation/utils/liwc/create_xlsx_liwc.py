@@ -29,7 +29,7 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
         worksheet.set_column(2, 2, 100, format)    
 
 
-data_dir = Path(os.path.abspath(__file__)).parents[0] / "data"
+data_dir = Path(os.path.abspath(__file__)).parents[1] / "data"
 
 def _store_xlsx(f_path):
     # Create path
