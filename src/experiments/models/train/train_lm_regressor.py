@@ -16,21 +16,21 @@ csv.field_size_limit(sys.maxsize)
 import wandb
 wandb.login(key="57878dd06745f877fc0ce405c74e1a57103391f0") # TODO Make .env file for this key
 
-base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
 datasets = {
-    "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
-    "train_sliced_stair_twitter_256": base_path / "train_test" / "train_sliced_stair_twitter_256.csv",
-    "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
-    "train_no_stair_twitter_256": base_path / "train_test" / "train_no_stair_twitter_256.csv",
+    "train_sliced_stair_twitter_512": base_path / "train_sliced_stair_twitter_512.csv",
+    "train_sliced_stair_twitter_256": base_path / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter_512": base_path / "train_no_stair_twitter.csv",
+    "train_no_stair_twitter_256": base_path / "train_no_stair_twitter_256.csv",
     
-    "test_sliced_stair_twitter": base_path / "train_test" / "test_sliced_stair_twitter.csv",
-    "test_sliced_stair_twitter_256": base_path / "train_test" / "test_sliced_stair_twitter_256.csv",
-    "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
-    "test_no_stair_twitter_256": base_path / "train_test" / "test_no_stair_twitter_256.csv",
+    "test_sliced_stair_twitter_512": base_path / "test_sliced_stair_twitter.csv",
+    "test_sliced_stair_twitter_256": base_path / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter_512": base_path / "test_no_stair_twitter.csv",
+    "test_no_stair_twitter_256": base_path / "test_no_stair_twitter_256.csv",
     
-    "shooter_hold_out_test": base_path / "train_test" / "shooter_hold_out_test.csv",
-    "shooter_hold_out_test_256": base_path / "train_test" / "shooter_hold_out_test_256.csv",
+    "shooter_hold_out": base_path / "shooter_hold_out_test.csv",
 }
+
 def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
 
     # Read csv
@@ -157,7 +157,7 @@ def main(model, size, dataset):
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset=dataset)
+    df = _get_dataframe(dataset=f"{dataset}_{size}")
 
     # Set X and y
     X = df.text.values.tolist()

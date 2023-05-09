@@ -13,8 +13,14 @@ emb:
 qj:
 	squeue -u olejlia
 
+qjl:
+	squeue -u olejlia --format="%i %P %.40j %u %t %M %D %R"
+
 qm:
 	squeue -u martijni
+
+qml:
+	squeue -u martijni --format="%i %P %.25j %u %t %M %D %R"
 
 q:
 	squeue

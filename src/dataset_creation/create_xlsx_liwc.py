@@ -42,7 +42,7 @@ def _store_xlsx(f_path):
     # Write xlsx file
     _write_formatted_xlsx(df=df, fname=fname, out_dir=out_dir)
 
-def main(path = data_dir / "train_test"):
+def main(path = data_dir / "train_test" / "new"):
     
     if os.path.isdir(path):
         for file in os.listdir(path):
