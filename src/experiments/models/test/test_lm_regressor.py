@@ -16,22 +16,22 @@ experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
 from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, print_metrics_tabulated
 
-base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data"
+
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
 datasets = {
-    "train_sliced_stair_twitter": base_path / "train_test" / "train_sliced_stair_twitter.csv",
-    "train_sliced_stair_twitter_256": base_path / "train_test" / "train_sliced_stair_twitter_256.csv",
-    "train_no_stair_twitter": base_path / "train_test" / "train_no_stair_twitter.csv",
-    "train_no_stair_twitter_256": base_path / "train_test" / "train_no_stair_twitter_256.csv",
+    "train_sliced_stair_twitter_512": base_path / "train_sliced_stair_twitter_512.csv",
+    "train_sliced_stair_twitter_256": base_path / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter_512": base_path / "train_no_stair_twitter.csv",
+    "train_no_stair_twitter_256": base_path / "train_no_stair_twitter_256.csv",
     
-    "test_sliced_stair_twitter": base_path / "train_test" / "test_sliced_stair_twitter.csv",
-    "test_sliced_stair_twitter_256": base_path / "train_test" / "test_sliced_stair_twitter_256.csv",
-    "test_no_stair_twitter": base_path / "train_test" / "test_no_stair_twitter.csv",
-    "test_no_stair_twitter_256": base_path / "train_test" / "test_no_stair_twitter_256.csv",
+    "test_sliced_stair_twitter_512": base_path / "test_sliced_stair_twitter.csv",
+    "test_sliced_stair_twitter_256": base_path / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter_512": base_path / "test_no_stair_twitter.csv",
+    "test_no_stair_twitter_256": base_path / "test_no_stair_twitter_256.csv",
     
-    "shooter_hold_out_test": base_path / "train_test" / "shooter_hold_out_test.csv",
-    "shooter_hold_out_test_256": base_path / "train_test" / "shooter_hold_out_test_256.csv",
+    "shooter_hold_out": base_path / "shooter_hold_out_test.csv",
 }
-def _get_dataframe(dataset: str = "test_sliced_stair_twitter"):
+def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
 
     # Read csv
     df = pd.read_csv(datasets[dataset], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
@@ -93,19 +93,20 @@ click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("-m", "--model", type=click.Choice(os.listdir(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor")), default="distilbert-base-uncased", help="Model from saved models")
 @click.option("-c", "--checkpoint", default="checkpoint-2130", help="Checkpoint to use")
-@click.option("-d", "--dataset", default="test_sliced_stair_twitter", help="Dataset to use")
+@click.option("-d", "--dataset", default="train_sliced_stair_twitter", help="Dataset used for fine-tuning")
+@click.option("-t", "--test-file", default="test_sliced_stair_twitter", help="Test file")
 @click.option("--max_len", default=512, help="Maximum length of texts")
-def main(model, checkpoint, dataset, max_len):
+def main(model, checkpoint, dataset, test_file, max_len):
 
     model_path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model
-    assert os.path.isdir(model_path / dataset / checkpoint), "Checkpoint not existing!"
-    checkpoint = model_path / dataset / checkpoint
+    assert os.path.isdir(model_path / f"{dataset}_{max_len}" / checkpoint), "Checkpoint not existing!"
+    checkpoint = model_path / f"{dataset}_{max_len}" / checkpoint
 
     # "inference", "test"
     method = "test"
 
     # Data
-    df = _get_dataframe(dataset=dataset)
+    df = _get_dataframe(dataset=f"{test_file}_{max_len}")
 
     if (method == "inference"):
         

@@ -1,0 +1,25 @@
+from csv import QUOTE_NONE
+import os
+from pathlib import Path
+import pandas as pd
+
+data_dir = Path(os.path.abspath(__file__)).parents[1] / "data" / "train_test" / "new_preprocessed"
+
+for max_len in ["256", "512"]:
+    # Read in train, test and val
+    train_df = pd.read_csv(data_dir / f"train_sliced_stair_twitter_{max_len}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    test_df = pd.read_csv(data_dir / f"test_sliced_stair_twitter_{max_len}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+    val_df = pd.read_csv(data_dir / f"val_sliced_stair_twitter_{max_len}_preprocessed.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+
+    # Combine
+    all_df = pd.concat([train_df, test_df, val_df])
+
+    # Filter on label
+    shooters_df = all_df.loc[all_df['label'] == 1]
+    nonshooters_df = all_df.loc[all_df['label'] == 0]
+
+    # Save files
+    shooters_df.to_csv(data_dir / "shooters_nonshooters" / f"shooters_{max_len}_preprocessed.csv", sep="‎", header=True, index=False, date_format="%Y-%m-%d")
+    nonshooters_df.to_csv(data_dir / "shooters_nonshooters" / f"nonshooters_{max_len}_preprocessed.csv", sep="‎", header=True, index=False, date_format="%Y-%m-%d")
+
+    

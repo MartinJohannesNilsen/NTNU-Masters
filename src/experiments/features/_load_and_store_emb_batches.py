@@ -8,7 +8,7 @@ import os
 import sys
 import torch
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
-from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vectors, get_bert_word_embeddings, get_ft_model, get_glove_model, get_bert_test
+from utils.word_embeddings import get_glove_word_vectors, get_fasttext_word_vectors, get_bert_word_embeddings, get_ft_model, get_glove_model
 import h5py
 import numpy as np
 from transformers import AutoTokenizer, AutoModel, pipeline
@@ -305,7 +305,7 @@ def create_and_store_embeddings(df: pd.DataFrame, fpath: str, emb_type: str, ste
     store.close()
 
 
-def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False) -> Union[list, dict]:
+def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int = None, tolist = False, keep_tensor_as_ndarray=False) -> Union[list, dict]:
     """Function to fetch data from h5py data store. For alleviating memory constraints with large embeddings sizes, parameters 'start' and 'chunk_size' can be utilized for fetching given range.
 
     Args:
@@ -330,7 +330,8 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
                 elif col_name in ["idx", "label"]:
                     fetched_data = fetched_data.astype(int)
                 elif col_name == "emb_tensor":
-                    fetched_data = [torch.from_numpy(tensor) for tensor in fetched_data]
+                    if not keep_tensor_as_ndarray:
+                        fetched_data = [torch.from_numpy(tensor) for tensor in fetched_data]
             else:
                 print("Non-existent column name!")
                 sys.exit(0)
@@ -338,7 +339,7 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
             fetched_data = {
                 "idx": list(f["idx"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int)),
                 "date": list(f["date"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
-                "emb_tensor": [torch.from_numpy(tensor) for tensor in (f["emb_tensor"][start:start+chunk_size] if (start != None and chunk_size != None) else f["emb_tensor"])],
+                "emb_tensor": f["emb_tensor"] if keep_tensor_as_ndarray else [torch.from_numpy(tensor) for tensor in (f["emb_tensor"][start:start+chunk_size] if (start != None and chunk_size != None) else f["emb_tensor"])],
                 "name": list(f["name"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(str)),
                 "label": list(f["label"][start:start+chunk_size if (start != None and chunk_size != None) else None:None].astype(int))
             }

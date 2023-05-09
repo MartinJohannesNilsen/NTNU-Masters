@@ -221,6 +221,7 @@ def grid_search(config):
         # Validation loss
         val_loss = 0.0
         pred_vlabels = []
+        
         true_vlabels = []
         with torch.no_grad():
             for i, vdata in enumerate(val_loader, 0):
