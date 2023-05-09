@@ -3,7 +3,7 @@
 ##SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=160:00:00
+#SBATCH --time=167:00:00
 #SBATCH --mem=32000
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=emb_type,max_len,pad_pos,check_padding
+#SBATCH --export=emb_type,max_len,pad_pos
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -47,7 +47,7 @@ python -m nltk.downloader stopwords
 echo "Running code"
 cd "src/experiments/models/train"
 echo "Recall-F1"
-python3 -u gridsearch_lstm_no_pack.py --emb_type $emb_type --max_len $max_len --pad_pos $pad_pos --check_padding $check_padding
+python3 -u gridsearch_lstm_no_pack.py --emb_type $emb_type --max_len $max_len --pad_pos $pad_pos
 
 # Print idun stats
 uname -a

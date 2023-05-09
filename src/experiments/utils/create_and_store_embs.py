@@ -217,7 +217,7 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, pad_pos = None, step_s
 
     emb_model = get_emb_model(emb_type)
     purpose = ["train", "test", "val"]
-    stair_twitter = ["sliced_stair", "no_stair"]
+    stair_twitter = ["sliced_stair"]
 
     for p in purpose:
         for st in stair_twitter:

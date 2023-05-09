@@ -184,10 +184,9 @@ def grid_search(config):
 
     model = LSTMTextClassifier(emb_dim=config["emb_dim"], hidden_size=config['hidden_size'], dropout=config["dropout"], num_layers=config["num_layers"]).to(device)
 
-    check_padding = config["check_padding"]
     emb_str = f"{config['emb_type']}_{model_to_dim[config['emb_type']]}" if config["emb_type"] != "glove_50" else config["emb_type"]
 
-    base_path = Path(os.path.abspath(__file__)).parents[7] / "features" / "embeddings" / "new"
+    base_path = Path(os.path.abspath(__file__)).parents[6] / "features" / "embeddings" / "new"
     print(f"base_path: {base_path}")
     train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
     val_path = base_path / f"val_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
@@ -234,7 +233,7 @@ def grid_search(config):
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(inputs, start, end).to(float) if config["check_padding"] else model(inputs, 0, -1).to(float)
+            outputs = model(inputs, start, end).to(float)
             loss = criterion(outputs.squeeze(dim=1), labels)
             loss.backward()
             optimizer.step()
@@ -253,7 +252,7 @@ def grid_search(config):
                 vinputs, vlabels, vstart, vend = vdata
                 vinputs, vlabels = vinputs.to(device), vlabels.to(float).to(device)
 
-                voutputs = model(vinputs, vstart, vend).to(float) if config["check_padding"] else model(vinputs, 0, -1).to(float)
+                voutputs = model(vinputs, vstart, vend).to(float)
                 [true_vlabels.append(vlabel) for vlabel in vlabels]
                 [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
 
@@ -314,7 +313,7 @@ def test_best_model(best_result):
         for data in test_loader:
             inputs, labels, start, end = data
             inputs, labels = inputs.to(device), labels.to(device)
-            outputs = best_trained_model(inputs, start, end).to(float) if config["check_padding"] else best_trained_model(inputs, 0, -1).to(float)
+            outputs = best_trained_model(inputs, start, end).to(float)
 
             [true_labels.append(label) for label in labels]
             [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
@@ -329,10 +328,8 @@ def test_best_model(best_result):
 @click.option("-e", "--emb_type", type=click.Choice(["fasttext", "glove", "bert", "glove_50"]) , help="Embedding type to be used for training")
 @click.option("-l", "--max_len", type=click.INT, help="Max length of sentence to be allowed. Determines padding and truncation")
 @click.option("-p", "--pad_pos", type=click.Choice(["head", "tail", "split"]), help="Position of padding to be used")
-@click.option("-c", "--check_padding", type=click.Choice(["False", "True"]), help="Whether to check the last and first hidden state of entire emb or just valid ones")
-def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samples=10, max_num_epochs=10):
+def main(emb_type: str, max_len: int, pad_pos: str, num_samples=10, max_num_epochs=10):
     emb_dim = model_to_dim[emb_type]
-    check_padding = True if check_padding == "True" else False 
     config = {
         "emb_dim": tune.choice([emb_dim]),
         "dropout": tune.choice([0.3, 0.4, 0.5, 0.6]),
@@ -341,7 +338,6 @@ def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samp
         "max_len": max_len,
         "emb_type": emb_type,
         "pad_pos": pad_pos,
-        "check_padding": check_padding,
         "hidden_size": tune.choice([64, 128, 256]),
         "num_layers": tune.choice([1, 2, 3])
     }
@@ -370,7 +366,7 @@ def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samp
     custom_reporter.add_metric_column("avg_train_loss")
     custom_reporter.add_metric_column("loss")
 
-    local_dir = str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "lstm" / "lstm_no_pack_fix")
+    local_dir = str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "lstm")
 
     tuner = tune.Tuner(
         tune.with_resources(
