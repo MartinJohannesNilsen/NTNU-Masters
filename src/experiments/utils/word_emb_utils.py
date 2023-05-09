@@ -38,29 +38,26 @@ def tokenize_with_preprocessing(text: str, remove_url: bool = True, emb_type: st
 
     soup = BeautifulSoup(text, "html.parser")
     text = soup.get_text()
-    
-    words = RegexpTokenizer("[\w']+").tokenize(text) if emb_type != "fasttext" else word_tokenize(text)
-
-    """ tokenizer = RegexpTokenizer("[\w']+")
-    words = tokenizer.tokenize(text) """
 
     url_replacement = "" if remove_url else "URLHYPERLINK"
 
     cleaned_words = []
-    for word in words:
+    for word in text.split(" "):
         word = word.lower()
         if word not in stopwords.words("english"):
-            word = re.sub(r'http+|www+', url_replacement, word) # Replace urls with chosen string or remove completely
+            word = re.sub(r"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})", url_replacement, word) # Replace urls with chosen string or remove completely
             word = re.sub(r'@[^ ]+', '', word) # Remove usernames in the context of Twitter posts
             word = re.sub(r'#', '', word) # Remove hashtags and keep words
             word = re.sub(r'([A-Za-z])\1{2,}', r'\1', word) # Character normalization, prevent words with letters repeated more than twice
+            word = re.sub(r'([^\w\s\'`])\1+', r'\1', word)
 
             if word != "":
                 cleaned_words.append(word)
+    
+    cleaned_words = RegexpTokenizer("[\w']+").tokenize(" ".join(cleaned_words)) if emb_type != "fasttext" else word_tokenize(" ".join(cleaned_words))
 
     return cleaned_words, len(cleaned_words)
 
-def tokenize_with_preprocessing_ft(text, remove_url: bool = True):
 
 
 def tokenize_with_preprocessing_drop_len(text, remove_url: bool = True):
