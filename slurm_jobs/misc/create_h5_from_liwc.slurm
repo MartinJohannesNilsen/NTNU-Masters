@@ -10,8 +10,8 @@
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --job-name=hehe
-#SBATCH --output=out/hehe.out
+#SBATCH --job-name=create_h5_from_liwc
+#SBATCH --output=out/create_h5_from_liwc.out
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
