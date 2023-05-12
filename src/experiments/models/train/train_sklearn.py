@@ -82,8 +82,9 @@ grid_search_params = {
         # 'weights': ['uniform', 'distance'],
         'metric': ['euclidean', 'manhattan', 'minkowski']}),
     "xgboost": (XGBClassifier(eval_metric='logloss'), {
-        'n_estimators': range(50, 301, 50),
-        'learning_rate': [0.01, 0.025, 0.05, 0.1],
+        'n_estimators': range(50, 251, 50),
+        # 'learning_rate': [0.01, 0.025, 0.05, 0.1],
+        'learning_rate': [0.01, 0.05, 0.1],
         # 'max_depth': range(3, 11),
         # 'min_child_weight': range(1, 7),
         # 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
