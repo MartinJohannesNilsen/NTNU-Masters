@@ -16,19 +16,19 @@ csv.field_size_limit(sys.maxsize)
 import wandb
 wandb.login(key="57878dd06745f877fc0ce405c74e1a57103391f0") # TODO Make .env file for this key
 
-base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test"
 datasets = {
-    "train_sliced_stair_twitter_512": base_path / "train_sliced_stair_twitter_512.csv",
-    "train_sliced_stair_twitter_256": base_path / "train_sliced_stair_twitter_256.csv",
-    "train_no_stair_twitter_512": base_path / "train_no_stair_twitter.csv",
-    "train_no_stair_twitter_256": base_path / "train_no_stair_twitter_256.csv",
+    "train_sliced_stair_twitter_512": base_path / "new" / "train_sliced_stair_twitter_512.csv",
+    "train_sliced_stair_twitter_256": base_path / "new" / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter_512": base_path / "new" / "train_no_stair_twitter_512.csv",
+    "train_no_stair_twitter_256": base_path / "new" / "train_no_stair_twitter_256.csv",
     
-    "test_sliced_stair_twitter_512": base_path / "test_sliced_stair_twitter.csv",
-    "test_sliced_stair_twitter_256": base_path / "test_sliced_stair_twitter_256.csv",
-    "test_no_stair_twitter_512": base_path / "test_no_stair_twitter.csv",
-    "test_no_stair_twitter_256": base_path / "test_no_stair_twitter_256.csv",
+    "test_sliced_stair_twitter_512": base_path / "new" / "test_sliced_stair_twitter_512.csv",
+    "test_sliced_stair_twitter_256": base_path / "new" / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter_512": base_path / "new" / "test_no_stair_twitter_512.csv",
+    "test_no_stair_twitter_256": base_path / "new" / "test_no_stair_twitter_256.csv",
     
-    "shooter_hold_out": base_path / "shooter_hold_out_test.csv",
+    "shooter_hold_out": base_path / "shooter_hold_out.csv",
 }
 
 def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
@@ -147,7 +147,7 @@ click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("-m", "--model", type=click.Choice(["distilbert-base-uncased", "bert-base-uncased", "roberta-base", "albert-base-v2"]), default="distilbert-base-uncased", help="Model name")
 @click.option("-s", "--size", type=click.Choice(["512", "256"]), default="512", help="Text max length")
-@click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter", help="Dataset to use")
+@click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter_256", help="Dataset to use")
 def main(model, size, dataset):
     # Parameters
     VAL_PORTION = 0.2
@@ -157,7 +157,7 @@ def main(model, size, dataset):
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset=f"{dataset}_{size}")
+    df = _get_dataframe(dataset=dataset)
 
     # Set X and y
     X = df.text.values.tolist()

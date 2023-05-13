@@ -180,8 +180,8 @@ def read_h5(fpath: str, col_name: str = None, start: int = None, chunk_size: int
     return fetched_data
 
 def _create():
-    data_dir = Path(os.path.abspath(__file__)).parents[0] / "liwc" / "csv"
-    out_dir = Path(os.path.abspath(__file__)).parents[0] / "liwc" / "h5"
+    data_dir = Path(os.path.abspath(__file__)).parents[0] / "liwc" / "not_preprocessed" / "splits" / "csv"
+    out_dir = Path(os.path.abspath(__file__)).parents[0] / "liwc" / "not_preprocessed" / "splits" / "h5"
 
     for file in data_dir.rglob("*.csv"):
 
@@ -199,5 +199,5 @@ def _read():
     return data
 
 if __name__ == "__main__":
-    # _create()
-    data = _read()
+    _create()
+    # data = _read()

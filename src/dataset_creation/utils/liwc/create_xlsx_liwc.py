@@ -29,7 +29,9 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
         worksheet.set_column(2, 2, 100, format)    
 
 
-data_dir = Path(os.path.abspath(__file__)).parents[1] / "data"
+# data_dir = Path(os.path.abspath(__file__)).parents[3] / "data"
+preprocessed = True
+data_dir = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "liwc" / ('preprocessed' if preprocessed else "not_preprocessed") / "splits" / "_datasets"
 
 def _store_xlsx(f_path):
     # Create path
@@ -42,7 +44,7 @@ def _store_xlsx(f_path):
     # Write xlsx file
     _write_formatted_xlsx(df=df, fname=fname, out_dir=out_dir)
 
-def main(path = data_dir / "train_test" / "new"):
+def main(path = data_dir / "csv"):
     
     if os.path.isdir(path):
         for file in os.listdir(path):
