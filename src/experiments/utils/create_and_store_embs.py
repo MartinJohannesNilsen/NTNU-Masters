@@ -14,7 +14,7 @@ from word_emb_utils import get_emb_model, embed_and_pad
 
 
 data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test" / "new"
-out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings" / "new"
+out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
 
 name_to_dim = {
     "glove_50": "",
