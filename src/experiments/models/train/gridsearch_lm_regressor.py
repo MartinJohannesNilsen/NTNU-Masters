@@ -180,7 +180,8 @@ def main(model, size, dataset):
     X_test = df_test.text.values.tolist()
     y_test = df_test.label.values
 
-    train(X=X_train, y=y_train, X_val=X_val, y_val=y_val, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    # train(X=X_train, y=y_train, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    grid_search(X=X_train, y=y_train, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
 
 if __name__ == "__main__":
     main()

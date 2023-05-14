@@ -9,6 +9,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_error, mean_absolute_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
 import pandas as pd
 from csv import QUOTE_NONE
 import csv
@@ -60,6 +61,26 @@ def compute_metrics_for_regression(eval_pred):
   
     return {"mse": mse, "rmse": rmse, "mae": mae, "r2": r2, "accuracy": accuracy} # "smape": smape
 
+def compute_metrics_for_classification(eval_pred):
+    logits, labels = eval_pred
+    predicted_labels = logits.argmax(axis=-1)
+
+    accuracy = accuracy_score(labels, predicted_labels)
+    precision = precision_score(labels, predicted_labels)
+    recall = recall_score(labels, predicted_labels)
+    f1 = f1_score(labels, predicted_labels)
+    f0_5 = fbeta_score(labels, predicted_labels, beta=0.5)
+    f2 = fbeta_score(labels, predicted_labels, beta=2)
+
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "f0.5": f0_5,
+        "f2": f2
+    }
+
 class MakeTorchData(torch.utils.data.Dataset):
     """Manipulate data to have label as float"""
     def __init__(self, encodings, labels):
@@ -99,7 +120,7 @@ def train(
     
     # Initialize tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 1).to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 2).to(device)
 
     # Split data into train and validation sets
     if X_val and y_val:
@@ -120,13 +141,13 @@ def train(
         output_dir = saved_model_checkpoints,          
         logging_dir = log_path,            
         num_train_epochs = num_epochs,     
-        per_device_train_batch_size = 32, # 16, 32, 64   
         per_device_eval_batch_size = 64,   
+        per_device_train_batch_size = 32, # 16, 32, 64   
         weight_decay = 0.01,               
         learning_rate = 2e-5,
         save_total_limit = 10,
         load_best_model_at_end = True,     
-        metric_for_best_model = 'rmse',    
+        metric_for_best_model = 'f1',    
         evaluation_strategy = "epoch",
         save_strategy = "epoch",
     )   
@@ -135,8 +156,8 @@ def train(
         model = model,                         
         args = training_args,                  
         train_dataset = train_dataset,         
-        eval_dataset = val_dataset,          
-        compute_metrics = compute_metrics_for_regression,     
+        eval_dataset = val_dataset,
+        compute_metrics = compute_metrics_for_classification,     
     )
 
     # Train the model
@@ -162,8 +183,9 @@ def main(model, size, dataset):
     # Parameters
     VAL_PORTION = 0.2
     MAX_LENGTH = int(size)
-    NUM_EPOCHS = 5
-    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model / dataset)
+    # NUM_EPOCHS = 5
+    NUM_EPOCHS = 1
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_classifier" / model / dataset)
     LOG_PATH = "./logs"
 
     # Data
