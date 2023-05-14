@@ -20,7 +20,11 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
     precision = (tp) / (tp + fp)
     recall = (tp) / (tp + fn)
     specificity = (tn) / (tn + fp)
-    fscore = 2 * (precision * recall) / (precision + recall)
+    f1score = 2 * (precision * recall) / (precision + recall)
+    beta = 0.5
+    f05score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
+    beta = 2
+    f2score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
     
     try:
         roc_auc = roc_auc_score(labels, predictions)
@@ -37,7 +41,9 @@ def get_metrics(predictions: List[float], labels: List[float]) -> dict:
         "precision": precision,
         "recall": recall,
         "specificity": specificity,
-        "f1_score": fscore,
+        "f1_score": f1score,
+        "f05_score": f05score,
+        "f2_score": f2score,
         "roc_auc": roc_auc
     }
 
@@ -67,6 +73,8 @@ def print_metrics_simplified(metrics: dict):
     print(f"Recall: {round(metrics['recall']*100, 3)}%")
     print(f"Specificity: {round(metrics['specificity']*100, 3)}%")
     print(f"F1-score: {round(metrics['f1_score']*100, 3)}%")
+    print(f"F0.5-score: {round(metrics['f05_score']*100, 3)}%")
+    print(f"F2-score: {round(metrics['f2_score']*100, 3)}%")
     print(f"AUC: {round(metrics['roc_auc']*100, 3)}%" if metrics['roc_auc'] is not None else "AUC: undefined")
 
 def print_metrics_comprehensive(metrics: dict):
@@ -96,6 +104,14 @@ def print_metrics_comprehensive(metrics: dict):
     print(f"\nF1-Score (2 * (precicion * recall) / (precision + recall))")
     print(f"\"The harmonic mean/weighted average of precision and recall.\"")
     print(f"{round(metrics['f1_score']*100, 3)}%")
+
+    print(f"\nF0.5-Score (1 + beta^2) * (precision * recall) / ((beta^2 * precision) + recall)")
+    print(f"\"Building on F1, this is the weighted average of precision and recall, with a bit more weight on precision. Beta equals 0.5.\"")
+    print(f"{round(metrics['f05_score']*100, 3)}%")
+
+    print(f"\nF2-Score (1 + beta^2) * (precision * recall) / ((beta^2 * precision) + recall)")
+    print(f"\"Building on F1, this is the weighted average of precision and recall, with a bit more weight on recall. Beta equals 2.\"")
+    print(f"{round(metrics['f2_score']*100, 3)}%")    
 
     print(f"\nAUC (Area under ROC curve, ROC-AUC)")
     print(f"\"Tells us about the capability of model in distinguishing the classes\"")
