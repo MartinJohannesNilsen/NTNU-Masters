@@ -9,7 +9,11 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_error, mean_absolute_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
+import torch.nn as nn
 import pandas as pd
+import torch.nn.functional as F
+from ray import tune, init, cluster_resources
 from csv import QUOTE_NONE
 import csv
 csv.field_size_limit(sys.maxsize)
@@ -46,45 +50,49 @@ def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
 
     return df
 
-def compute_metrics_for_regression(eval_pred):
+def compute_metrics_for_classification(eval_pred):
     logits, labels = eval_pred
-    labels = labels.reshape(-1, 1)
+    predicted_labels = logits.argmax(axis=-1)
 
-    mse = mean_squared_error(labels, logits)
-    rmse = mean_squared_error(labels, logits, squared=False)
-    mae = mean_absolute_error(labels, logits)
-    r2 = r2_score(labels, logits)
-    #smape = 1/len(labels) * np.sum(2 * np.abs(logits-labels) / (np.abs(labels) + np.abs(logits))*100)
-    single_squared_errors = ((logits - labels).flatten()**2).tolist()
-    accuracy = sum([1 for e in single_squared_errors if e < 0.25]) / len(single_squared_errors)
-  
-    return {"mse": mse, "rmse": rmse, "mae": mae, "r2": r2, "accuracy": accuracy} # "smape": smape
+    accuracy = accuracy_score(labels, predicted_labels)
+    precision = precision_score(labels, predicted_labels)
+    recall = recall_score(labels, predicted_labels)
+    f1 = f1_score(labels, predicted_labels)
+    f0_5 = fbeta_score(labels, predicted_labels, beta=0.5)
+    f2 = fbeta_score(labels, predicted_labels, beta=2)
+
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "f0.5": f0_5,
+        "f2": f2
+    }
 
 class MakeTorchData(torch.utils.data.Dataset):
-    """Manipulate data to have label as float"""
     def __init__(self, encodings, labels):
         self.encodings = encodings
         self.labels = labels
 
     def __getitem__(self, idx):
         item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
-        item["labels"] = torch.tensor([self.labels[idx]])
-        item["labels"] = float(item["labels"])
+        item["labels"] = torch.tensor(self.labels[idx])
         return item
 
     def __len__(self):
-        return len(self.labels)
+        # return len(self.labels)
+        return 50
 
 def train(
+        config,
         X: List, y: List, 
         X_val: List = None, y_val: List = None, 
-        X_test: List = None, y_test: List = None, 
         val_portion: float = 0.2, 
         max_length: int = 512, 
         model_name: str = "distilbert-base-uncased", 
-        num_epochs: int = 5, 
         saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
-        log_path: str = "./logs"
+        log_path: str = "./logs",
         ):
 
     # Initialize device
@@ -95,8 +103,10 @@ def train(
     device = torch.device(dev)
     
     # Initialize tokenizer and model
+    id2label = {0: "NEGATIVE", 1: "POSITIVE"}
+    label2id = {"NEGATIVE": 0, "POSITIVE": 1}
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 1).to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 2, id2label=id2label, label2id=label2id).to(device)
 
     # Split data into train and validation sets
     if X_val is not None and y_val is not None:
@@ -118,38 +128,29 @@ def train(
     training_args = TrainingArguments(
         output_dir = saved_model_checkpoints,          
         logging_dir = log_path,            
-        num_train_epochs = num_epochs,     
-        per_device_train_batch_size = 32, # 16, 32, 64   
-        per_device_eval_batch_size = 64,   
-        weight_decay = 0.01,               
-        learning_rate = 2e-5,
+        num_train_epochs=config["epochs"],
+        per_device_train_batch_size=config["train_batch_size"],
+        per_device_eval_batch_size=32,
+        weight_decay=config["weight_decay"],
+        learning_rate=config["learning_rate"],
         save_total_limit = 10,
-        load_best_model_at_end = True,     
-        metric_for_best_model = 'rmse',    
+        load_best_model_at_end = True,
+        metric_for_best_model = 'f2',    
         evaluation_strategy = "epoch",
         save_strategy = "epoch",
-    )   
+        report_to='wandb',  # enable reporting to W&B
+    )
 
     trainer = Trainer(
         model = model,                         
         args = training_args,                  
         train_dataset = train_dataset,         
-        eval_dataset = val_dataset,          
-        compute_metrics = compute_metrics_for_regression,     
+        eval_dataset = val_dataset,
+        compute_metrics = compute_metrics_for_classification,
     )
 
     # Train the model
     trainer.train()
-
-    # Call the summary
-    trainer.evaluate()
-
-    # Trainer test metrics
-    if X_test and y_test:
-        test_encodings = tokenizer(X_test, truncation=True, padding=True, max_length=max_length)
-        test_dataset = MakeTorchData(test_encodings, y_test.ravel())
-        trainer.eval_dataset = test_dataset
-        trainer.evaluate()
         
 
 click.option = partial(click.option, show_default=True)
@@ -159,16 +160,14 @@ click.option = partial(click.option, show_default=True)
 @click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter_256", help="Dataset to use")
 def main(model, size, dataset):
     # Parameters
-    VAL_PORTION = 0.2
     MAX_LENGTH = int(size)
-    NUM_EPOCHS = 5
-    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model / dataset)
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_classifier_grid" / model / dataset)
     LOG_PATH = "./logs"
 
     # Data
     df_train = _get_dataframe(dataset=dataset)
     df_val = _get_dataframe(dataset=dataset.replace("train", "val"))
-    df_test = _get_dataframe(dataset=dataset.replace("train", "test"))
+    # df_test = _get_dataframe(dataset=dataset.replace("train", "test"))
 
     # Set X and y
     X_train = df_train.text.values.tolist()
@@ -176,10 +175,45 @@ def main(model, size, dataset):
     X_val = df_val.text.values.tolist()
     y_val = df_val.label.values
     
-    X_test = df_test.text.values.tolist()
-    y_test = df_test.label.values
+    # X_test = df_test.text.values.tolist()
+    # y_test = df_test.label.values
 
-    train(X=X_train, y=y_train, X_val=X_val, y_val=y_val, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    config = {
+        # "epochs": tune.grid_search([2, 3, 5]),
+        # "train_batch_size": tune.grid_search([8, 16, 32]),
+        # "weight_decay": tune.grid_search([0.0, 0.01]),
+        # "learning_rate": tune.grid_search([5e-5, 3e-5, 1e-5]),
+        
+        "epochs": tune.grid_search([1]),
+        "train_batch_size": tune.grid_search([32]),
+        "weight_decay": tune.grid_search([0.0]),
+        "learning_rate": tune.grid_search([1e-5]),
+    }
+
+    def get_available_gpus():
+        if torch.cuda.is_available():
+            return torch.cuda.device_count()
+        else:
+            return 0
+
+    num_gpus = get_available_gpus()
+
+    # Start the hyperparameter tuning
+    init(num_gpus=1)
+    print(cluster_resources())
+
+    # init(num_gpus=num_gpus)
+    analysis = tune.run(tune.with_parameters(train, X=X_train, y=y_train, X_val=X_val, y_val=y_val, max_length=MAX_LENGTH, model_name=model, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH), config=config)
+
+    # print("Best config: ", analysis.get_best_config(metric="f1", mode="max"))
+
+    # Get the best trial
+    best_trial = analysis.get_best_trial("f1", mode="max", scope="all")
+
+    # Print the best config and all the metrics
+    print("Best config: ", best_trial.config)
+    print("Best metrics: ", best_trial.last_result)
+
 
 if __name__ == "__main__":
     main()

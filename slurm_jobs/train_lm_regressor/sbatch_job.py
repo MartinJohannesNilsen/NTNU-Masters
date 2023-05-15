@@ -11,8 +11,8 @@ sizes = ["512", "256"]
 for model in models:
     for size in sizes:
             # Slurm properties
-            job_name = f"train_lm_{model}_{size}"
-            out = f"out/train_lm/{model}_{size}.out"
+            job_name = f"train_lm_regressor_{model}_{size}"
+            out = f"out/train_lm_regressor/{model}_{size}.out"
 
             # Python properties
             dataset = f"{variation}_{size}"
@@ -24,6 +24,6 @@ for model in models:
             # else:
                 # sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model={model},size={size},dataset={dataset} slurm_jobs/train_lm/job.slurm"
             
-            sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model={model},size={size},dataset={dataset} slurm_jobs/train_lm/job.slurm"
+            sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model={model},size={size},dataset={dataset} slurm_jobs/train_lm_regressor/job.slurm"
             print(sbatch_cmd)
             subprocess.call(sbatch_cmd.split())

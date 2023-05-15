@@ -49,7 +49,7 @@ echo ""
 cd "src/experiments/models/train"
 
 echo "Recall-F1"
-python3 -u train_sklearn.py $feature_path --model $model --grid-search-metric "recall_f1"
+python3 -u train_sklearn.py $feature_path --model $model --grid-search-metric "f2"
 
 # Print idun stats
 uname -a

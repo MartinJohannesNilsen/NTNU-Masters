@@ -5,7 +5,6 @@ import click
 import numpy as np
 import time
 import pickle
-from sklearn.metrics import make_scorer, recall_score   
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, KFold, StratifiedKFold, train_test_split
 import joblib
 from tabulate import tabulate
@@ -21,7 +20,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import SGDClassifier
 from xgboost import XGBClassifier
 from sklearn.gaussian_process import kernels, GaussianProcessClassifier
-from sklearn.metrics import make_scorer, recall_score, f1_score, precision_score
+from sklearn.metrics import make_scorer, recall_score, f1_score, precision_score, fbeta_score
 
 def combined_recall_f1(y_true, y_pred, recall_weight=0.5):
     recall = recall_score(y_true, y_pred)
@@ -164,7 +163,7 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         cv = StratifiedKFold(n_splits=3)
 
         # Define scoring metrics
-        scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'recall_f1': make_scorer(combined_recall_f1, greater_is_better = True), 'precision': make_scorer(precision_score)}
+        scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'f2': make_scorer(fbeta_score, beta=2), 'precision': make_scorer(precision_score)}
 
         # Run search
         print(f"Running hyperparameter search ...")
@@ -191,10 +190,10 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
         print("=" * 80)
         print("Optimized metric:", grid_search_metric)
         print("-" * 80)
-        print("Best F1 score:", grid_search.cv_results_['mean_test_f1'][best_index])
         print("Best Recall score:", grid_search.cv_results_['mean_test_recall'][best_index])
-        print("Best Combined Recall-F1 score:", grid_search.cv_results_['mean_test_recall_f1'][best_index])
         print("Best Precision score:", grid_search.cv_results_['mean_test_precision'][best_index])
+        print("Best F1 score:", grid_search.cv_results_['mean_test_f1'][best_index])
+        print("Best F2 score:", grid_search.cv_results_['mean_test_f2'][best_index])
         print("-" * 80)
         print("Best params:", grid_search.best_params_)
         print("Best estimator:", grid_search.best_estimator_)
