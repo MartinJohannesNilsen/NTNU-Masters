@@ -3,7 +3,7 @@
 ##SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=120:00:00
+#SBATCH --time=167:00:00
 #SBATCH --mem=32000
 #SBATCH --gres=gpu:1
 #SBATCH --constraint="A100"
@@ -24,6 +24,8 @@ echo Directory: $SLURM_SUBMIT_DIR
 echo Nodes: $SLURM_JOB_NODELIST
 echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
+echo Gpu spørmsålstegn:
+nvidia-smi
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
 awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
@@ -46,8 +48,8 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-echo "Emphasize f2"
-python3 -u gridsearch_cnn.py --emb_type $emb_type --max_len $max_len --pad_pos $pad_pos
+echo "Recall-F1"
+python3 -u gridsearch_lstm_no_pack.py --emb_type $emb_type --max_len $max_len --pad_pos $pad_pos
 
 # Print idun stats
 uname -a

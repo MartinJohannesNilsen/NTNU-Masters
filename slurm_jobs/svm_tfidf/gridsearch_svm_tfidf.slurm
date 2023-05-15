@@ -1,18 +1,18 @@
 #!/bin/sh
-#SBATCH --partition=GPUQ
-##SBATCH --partition=CPUQ
+##SBATCH --partition=GPUQ
+#SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=120:00:00
+#SBATCH --time=167:00:00
 #SBATCH --mem=32000
-#SBATCH --gres=gpu:1
-#SBATCH --constraint="A100"
+##SBATCH --gres=gpu:1
+##SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=emb_type,max_len,pad_pos
+#SBATCH --export=max_len
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -46,8 +46,8 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-echo "Emphasize f2"
-python3 -u gridsearch_cnn.py --emb_type $emb_type --max_len $max_len --pad_pos $pad_pos
+echo "Recall-F1"
+python3 -u gs_svm_tfidf.py --max_len $max_len
 
 # Print idun stats
 uname -a

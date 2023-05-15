@@ -3,12 +3,9 @@ import sys
 import os
 from pathlib import Path
 from nltk.stem import WordNetLemmatizer
-from sklearn.feature_extraction.text import TfidfVectorizer
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[1]))
-from experiments.utils.word_embeddings import _tokenize_with_preprocessing
-from experiments.utils.word_emb_utils import create_vocab_w_idx, tokenize_with_preprocessing_drop_len
+from experiments.utils.word_emb_utils import tokenize_with_preprocessing_drop_len
 from csv import QUOTE_NONE
-from collections import Counter
 from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 

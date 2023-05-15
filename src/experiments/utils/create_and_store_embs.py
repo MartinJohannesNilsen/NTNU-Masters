@@ -14,7 +14,7 @@ from word_emb_utils import get_emb_model, embed_and_pad
 
 
 data_folder = Path(os.path.abspath(__file__)).parents[2] / "dataset_creation" / "data" / "train_test" / "new"
-out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings" / "new"
+out_path = Path(os.path.abspath(__file__)).parents[1] / "features" / "embeddings"
 
 name_to_dim = {
     "glove_50": "",
@@ -217,7 +217,7 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, pad_pos = None, step_s
 
     emb_model = get_emb_model(emb_type)
     purpose = ["train", "test", "val"]
-    stair_twitter = ["sliced_stair", "no_stair"]
+    stair_twitter = ["sliced_stair"]
 
     for p in purpose:
         for st in stair_twitter:
