@@ -1,18 +1,18 @@
 #!/bin/sh
-##SBATCH --partition=GPUQ
-#SBATCH --partition=CPUQ
-##SBATCH --partition=
+#SBATCH --partition=GPUQ
+##SBATCH --partition=CPUQ
+##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=96:00:00
+#SBATCH --time=120:00:00
 #SBATCH --mem=100000
-##SBATCH --gres=gpu:1
-##SBATCH --constraint="P100|V100"
+#SBATCH --gres=gpu:1
+##SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=feature_path,model
+#SBATCH --export=model,size,dataset
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -27,6 +27,7 @@ echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
 awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
+nvidia-smi
 
 # Load idun modules
 module purge
@@ -45,11 +46,8 @@ python -m nltk.downloader stopwords
 
 # Run code
 echo "Running code"
-echo ""
 cd "src/experiments/models/train"
-
-echo "Recall-F1"
-python3 -u train_sklearn.py $feature_path --model $model --grid-search-metric "f2"
+python3 gridsearch_lm_classifier.py --model $model --size $size --dataset $dataset
 
 # Print idun stats
 uname -a

@@ -86,9 +86,6 @@ def train(
         saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
         log_path: str = "./logs"
         ):
-    
-    assert (X_val != None and y_val != None) or (X_val == None and y_val == None), "If val set defined, you need to pass in both!" 
-    assert (X_test != None and y_test != None) or (X_test == None and y_test == None), "If test set defined, you need to pass in both!" 
 
     # Initialize device
     if torch.cuda.is_available(): 
@@ -102,9 +99,11 @@ def train(
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 1).to(device)
 
     # Split data into train and validation sets
-    if X_val and y_val:
+    if X_val is not None and y_val is not None:
         X_train, y_train = X, y
     else:
+        if X_val is not None or y_val is not None:
+            print("Both X_val and y_val need to be input, defaulting to val_portion split of train!")
         X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_portion) # Train Val split
     
     # Encode the text
