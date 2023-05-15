@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from ray import tune
+from ray import tune, get_gpu_ids
 from ray.air import session, RunConfig
 from ray.air.checkpoint import Checkpoint
 from ray.tune import CLIReporter
@@ -38,7 +38,12 @@ def get_metrics(predictions, labels) -> dict:
     precision = (tp) / (tp + fp)
     recall = (tp) / (tp + fn)
     specificity = (tn) / (tn + fp)
+
     fscore = 2 * (precision * recall) / (precision + recall)
+    beta = 0.5
+    f05score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
+    beta = 2
+    f2score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
     
     try:
         roc_auc = roc_auc_score(labels, predictions)
@@ -56,7 +61,9 @@ def get_metrics(predictions, labels) -> dict:
         "recall": recall,
         "specificity": specificity,
         "f1_score": fscore,
-        "roc_auc": roc_auc
+        "roc_auc": roc_auc,
+        "f2_score": f2score,
+        "f_05_score": f05score
     }
 
     return metrics
@@ -177,12 +184,17 @@ model_to_dim = {
 
 torch.manual_seed(0)
 def grid_search(config):
-
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print("ray.get_gpu_ids(): {}".format(get_gpu_ids()))
+    print("CUDA_VISIBLE_DEVICES: {}".format(os.environ["CUDA_VISIBLE_DEVICES"]))
 
     #search_folder = create_search_run()
 
-    model = LSTMTextClassifier(emb_dim=config["emb_dim"], hidden_size=config['hidden_size'], dropout=config["dropout"], num_layers=config["num_layers"]).to(device)
+    model = LSTMTextClassifier(emb_dim=config["emb_dim"], hidden_size=config['hidden_size'], dropout=config["dropout"], num_layers=config["num_layers"])
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda:0"
+    model.to(device)
+    print(f"device: {device}")
 
     emb_str = f"{config['emb_type']}_{model_to_dim[config['emb_type']]}" if config["emb_type"] != "glove_50" else config["emb_type"]
 
@@ -253,8 +265,6 @@ def grid_search(config):
                 vinputs, vlabels = vinputs.to(device), vlabels.to(float).to(device)
 
                 voutputs = model(vinputs, vstart, vend).to(float)
-                [true_vlabels.append(vlabel) for vlabel in vlabels]
-                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
 
                 vweighting = []
                 for l in vlabels:
@@ -268,12 +278,18 @@ def grid_search(config):
                 vloss = criterion(voutputs.squeeze(dim=1), vlabels)
                 val_loss += vloss.item()
 
+                voutputs = voutputs.cpu()
+                vlabels = vlabels.cpu()
+
+                [true_vlabels.append(vlabel) for vlabel in vlabels]
+                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+
         avg_vloss = val_loss/len(val_loader)    
 
         # Here we save a checkpoint. It is automatically registered with
         # Ray Tune and can be accessed through `session.get_checkpoint()`
         # API in future iterations.
-        gs_path = f"LSTM_gridsearch_sliced_stair_twitter_{config['emb_type']}_{config['emb_dim']}_{config['max_len']}_no_pack"
+        gs_path = f"LSTM_gridsearch_sliced_stair_twitter_{config['emb_type']}_{config['emb_dim']}_{config['max_len']}_gpu"
         os.makedirs(gs_path, exist_ok=True)
         torch.save(
             (model.state_dict(), optimizer.state_dict()), f"{gs_path}/checkpoint.pt")
@@ -315,8 +331,13 @@ def test_best_model(best_result):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = best_trained_model(inputs, start, end).to(float)
 
+            outputs = outputs.cpu()
+            labels = labels.cpu()
+
             [true_labels.append(label) for label in labels]
             [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
+
+            pred_labels = pred_labels.cpu()
 
     metrics = get_metrics(pred_labels, true_labels)
     print(f"Best results with config:\n{config}")
@@ -362,19 +383,21 @@ def main(emb_type: str, max_len: int, pad_pos: str, num_samples=10, max_num_epoc
 
     custom_reporter = TrialTerminationReporter()
     custom_reporter.add_metric_column("epoch")
-    custom_reporter.add_metric_column("f1_score")
+    custom_reporter.add_metric_column("f2_score")
     custom_reporter.add_metric_column("avg_train_loss")
     custom_reporter.add_metric_column("loss")
 
-    local_dir = str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "lstm")
+    local_dir = str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "lstm_gpu")
+    num_gpus = torch.cuda.device_count()
+    print(f"num_gpus: {num_gpus}")
 
     tuner = tune.Tuner(
         tune.with_resources(
             tune.with_parameters(grid_search),
-            resources={"cpu": 1}
+            resources={"gpu": num_gpus}
         ),
         tune_config=tune.TuneConfig(
-            metric="f1_score",
+            metric="f2_score",
             mode="max",
             scheduler=scheduler,
             num_samples=num_samples,
@@ -394,7 +417,9 @@ def main(emb_type: str, max_len: int, pad_pos: str, num_samples=10, max_num_epoc
     for d in dfs.values():
         ax = d.mean_accuracy.plot(ax=ax, legend=False) """
     
-    best_result = results.get_best_result("f1_score", "max")
+    
+    
+    best_result = results.get_best_result("f2_score", "max")
 
     print("Best trial config: {}".format(best_result.config))
     print("Best trial final validation loss: {}".format(

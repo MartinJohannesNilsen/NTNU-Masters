@@ -5,8 +5,8 @@
 #SBATCH --account=share-ie-idi
 #SBATCH --time=167:00:00
 #SBATCH --mem=32000
-##SBATCH --gres=gpu:1
-##SBATCH --constraint="P100|V100"
+#SBATCH --gres=gpu:1
+#SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
@@ -24,6 +24,8 @@ echo Directory: $SLURM_SUBMIT_DIR
 echo Nodes: $SLURM_JOB_NODELIST
 echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
+echo Gpu spørmsålstegn:
+nvidia-smi
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
 awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo

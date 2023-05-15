@@ -5,8 +5,8 @@
 #SBATCH --account=share-ie-idi
 #SBATCH --time=120:00:00
 #SBATCH --mem=32000
-##SBATCH --gres=gpu:1
-##SBATCH --constraint="P100|V100"
+#SBATCH --gres=gpu:1
+#SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
@@ -46,7 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-echo "Recall-F1"
+echo "Emphasize f2"
 python3 -u gridsearch_cnn.py --emb_type $emb_type --max_len $max_len --pad_pos $pad_pos
 
 # Print idun stats
