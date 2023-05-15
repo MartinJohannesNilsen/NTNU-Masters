@@ -337,8 +337,6 @@ def test_best_model(best_result):
             [true_labels.append(label) for label in labels]
             [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
 
-            pred_labels = pred_labels.cpu()
-
     metrics = get_metrics(pred_labels, true_labels)
     print(f"Best results with config:\n{config}")
     print(f"Got metrics: {metrics}")
