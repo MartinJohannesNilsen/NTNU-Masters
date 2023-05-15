@@ -20,7 +20,7 @@ qm:
 	squeue -u martijni
 
 qml:
-	squeue -u martijni --format="%i %P %.30j %u %t %M %D %R"
+	squeue -u martijni --format="%i %P %.55j %u %t %M %D %R"
 
 q:
 	squeue

@@ -81,8 +81,8 @@ class MakeTorchData(torch.utils.data.Dataset):
         return item
 
     def __len__(self):
-        # return len(self.labels)
-        return 50
+        return len(self.labels)
+        # return 50
 
 def train(
         config,
@@ -179,15 +179,15 @@ def main(model, size, dataset):
     # y_test = df_test.label.values
 
     config = {
-        # "epochs": tune.grid_search([2, 3, 5]),
-        # "train_batch_size": tune.grid_search([8, 16, 32]),
-        # "weight_decay": tune.grid_search([0.0, 0.01]),
-        # "learning_rate": tune.grid_search([5e-5, 3e-5, 1e-5]),
+        "epochs": tune.grid_search([2, 3, 5]),
+        "train_batch_size": tune.grid_search([8, 16, 32]),
+        "weight_decay": tune.grid_search([0.0, 0.01]),
+        "learning_rate": tune.grid_search([5e-5, 3e-5, 1e-5]),
         
-        "epochs": tune.grid_search([1]),
-        "train_batch_size": tune.grid_search([32]),
-        "weight_decay": tune.grid_search([0.0]),
-        "learning_rate": tune.grid_search([1e-5]),
+        # "epochs": tune.grid_search([1]),
+        # "train_batch_size": tune.grid_search([32]),
+        # "weight_decay": tune.grid_search([0.0]),
+        # "learning_rate": tune.grid_search([1e-5]),
     }
 
     def get_available_gpus():

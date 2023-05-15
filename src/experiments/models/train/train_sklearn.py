@@ -19,103 +19,47 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import SGDClassifier
 from xgboost import XGBClassifier
-from sklearn.gaussian_process import kernels, GaussianProcessClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel, RBF
 from sklearn.metrics import make_scorer, recall_score, f1_score, precision_score, fbeta_score
 
-def combined_recall_f1(y_true, y_pred, recall_weight=0.5):
-    recall = recall_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
-    return recall_weight * recall + (1 - recall_weight) * f1
+training_params_from_gridsearch = {'nb_256_bert_768_split': {}, 'nb_256_bert_768_tail': {}, 'nb_256_glove_300_split': {}, 'nb_256_bert_768_head': {}, 'nb_256_fasttext_300_split': {}, 'nb_256_glove_300_tail': {}, 'nb_256_glove_50_head': {}, 'nb_256_fasttext_300_tail': {}, 'nb_256_glove_50_split': {}, 'nb_256_glove_50_tail': {}, 'nb_256_glove_300_head': {}, 'nb_256_fasttext_300_head': {}, 'knn_512_fasttext_300_split': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_fasttext_300_head': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_glove_300_head': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_512_glove_300_split': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_512_bert_768_tail': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_bert_768_head': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_glove_50_split': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_512_glove_300_tail': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_fasttext_300_tail': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_glove_50_head': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_bert_768_split': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_glove_50_tail': {'metric': 'euclidean', 'n_neighbors': 1}, 'svm_512_glove_300_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_512_bert_768_head': {'C': 0.1, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_fasttext_300_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_512_glove_300_tail': {'C': 10, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_bert_768_tail': {'C': 0.01, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_fasttext_300_tail': {'C': 1, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_glove_300_split': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_512_glove_50_split': {'C': 0.1, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_glove_50_tail': {'C': 10, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_fasttext_300_split': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_512_bert_768_split': {'C': 0.1, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_512_glove_50_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'gaussian_256_bert_768_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_fasttext_300_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_bert_768_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_fasttext_300_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_bert_768_split': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_fasttext_300_split': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_glove_50_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_glove_300_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_glove_50_split': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_glove_300_split': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_glove_300_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_glove_50_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'xgboost_512_glove_50_head': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_512_fasttext_300_tail': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_512_glove_300_head': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_512_glove_300_tail': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_512_glove_50_split': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_512_glove_300_split': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_512_glove_50_tail': {'learning_rate': 0.1, 'n_estimators': 200}, 'xgboost_512_fasttext_300_head': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_512_fasttext_300_split': {'learning_rate': 0.1, 'n_estimators': 150}, 'xgboost_512_bert_768_tail': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_512_bert_768_head': {'learning_rate': 0.1, 'n_estimators': 200}, 'xgboost_512_bert_768_split': {'learning_rate': 0.01, 'n_estimators': 50}, 'knn_256_bert_768_split': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_glove_50_tail': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_glove_50_head': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_bert_768_head': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_256_glove_50_split': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_glove_300_tail': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_fasttext_300_tail': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_256_fasttext_300_head': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_256_glove_300_head': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_glove_300_split': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_fasttext_300_split': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_256_bert_768_tail': {'metric': 'manhattan', 'n_neighbors': 1}, 'nb_512_glove_50_tail': {}, 'nb_512_glove_300_head': {}, 'nb_512_fasttext_300_head': {}, 'nb_512_glove_300_tail': {}, 'nb_512_glove_50_head': {}, 'nb_512_fasttext_300_tail': {}, 'nb_512_glove_50_split': {}, 'nb_512_glove_300_split': {}, 'nb_512_bert_768_head': {}, 'nb_512_fasttext_300_split': {}, 'nb_512_bert_768_tail': {}, 'nb_512_bert_768_split': {}, 'gaussian_512_glove_50_split': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_glove_300_split': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_glove_300_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_glove_50_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_glove_50_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_glove_300_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_bert_768_split': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_bert_768_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_fasttext_300_tail': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_fasttext_300_split': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_bert_768_tail': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_fasttext_300_head': {'kernel': DotProduct(sigma_0=1) + WhiteKernel(noise_level=1)}, 'xgboost_256_bert_768_head': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_256_bert_768_split': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_256_fasttext_300_split': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_bert_768_tail': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_256_glove_300_tail': {'learning_rate': 0.1, 'n_estimators': 250}, 'xgboost_256_fasttext_300_head': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_glove_50_split': {'gamma': 0, 'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_glove_300_split': {'learning_rate': 0.1, 'n_estimators': 150}, 'xgboost_256_glove_50_tail': {'gamma': 0, 'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_fasttext_300_tail': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_glove_50_head': {'gamma': 0, 'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_glove_300_head': {'learning_rate': 0.1, 'n_estimators': 300}, 'svm_256_glove_50_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_bert_768_split': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_glove_50_tail': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_fasttext_300_split': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_fasttext_300_tail': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_glove_300_tail': {'C': 10, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_256_bert_768_tail': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_glove_300_split': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_glove_50_split': {'C': 100, 'gamma': 'scale', 'kernel': 'linear'}, 'svm_256_fasttext_300_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_glove_300_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'svm_256_bert_768_head': {'C': 100, 'gamma': 'scale', 'kernel': 'sigmoid'}, 'nb_256_2007': {}, 'nb_256_2015': {}, 'nb_256_2001': {}, 'nb_256_2022': {}, 'knn_512_2015': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_2001': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_512_2007': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_512_2022': {'metric': 'manhattan', 'n_neighbors': 1}, 'svm_512_2007': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'svm_512_2015': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'svm_512_2001': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'svm_512_2022': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'gaussian_256_2007': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_2015': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_2001': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_256_2022': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'xgboost_512_2015': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_512_2001': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_512_2007': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_512_2022': {'learning_rate': 0.1, 'n_estimators': 300}, 'knn_256_2015': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_256_2001': {'metric': 'euclidean', 'n_neighbors': 1}, 'knn_256_2007': {'metric': 'manhattan', 'n_neighbors': 1}, 'knn_256_2022': {'metric': 'manhattan', 'n_neighbors': 1}, 'nb_512_2007': {}, 'nb_512_2015': {}, 'nb_512_2001': {}, 'nb_512_2022': {}, 'gaussian_512_2007': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_2015': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_2001': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'gaussian_512_2022': {'kernel': RBF(length_scale=1) + WhiteKernel(noise_level=1)}, 'xgboost_256_2015': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_2001': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_2007': {'learning_rate': 0.1, 'n_estimators': 300}, 'xgboost_256_2022': {'learning_rate': 0.1, 'n_estimators': 300}, 'svm_256_2007': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'svm_256_2015': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'svm_256_2001': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}, 'svm_256_2022': {'C': 100, 'gamma': 'scale', 'kernel': 'rbf'}}
 
-"""
 grid_search_params = {
-    "svm" : (SVC(), {
-        'C': np.logspace(-3, 3, 7),
-        'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
-        'degree': [2, 3, 4, 5],
-        'gamma': ['scale', 'auto']}),
-    "sgd": (SGDClassifier(), {
-        'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'],
-        'penalty': ['none', 'l1', 'l2', 'elasticnet'],
-        'alpha': np.logspace(-6, 3, 10),
-        'l1_ratio': np.linspace(0, 1, 11),
-        'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
-        'eta0': np.logspace(-4, 0, 5)}),
     "nb" : (GaussianNB(), {}),
     "knn": (KNeighborsClassifier(), {
         'n_neighbors': range(1, 21),
-        'weights': ['uniform', 'distance'],
         'metric': ['euclidean', 'manhattan', 'minkowski']}),
-    "xgboost": (XGBClassifier(eval_metric='logloss'), {
-        'n_estimators': range(50, 301, 50),
-        'learning_rate': [0.01, 0.05, 0.1, 0.2, 0.3],
-        'max_depth': range(3, 11),
-        'min_child_weight': range(1, 7),
-        'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        'gamma': [0, 0.1, 0.2, 0.3, 0.4, 0.5]}),
-    "gaussian": (GaussianProcessClassifier(), {
-        'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.Matern(), kernels.WhiteKernel()],
-        'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
-        'n_restarts_optimizer': [0, 1, 2, 3, 4],
-        'max_iter_predict': [50, 100, 150, 200]})
-}
-"""
-grid_search_params = {
     "svm" : (SVC(), {
         'C': [0.01, 0.1, 1, 10, 100],
         'kernel': ['linear', 'rbf', 'sigmoid'],
-        # 'degree': [2, 3, 4, 5],
         'gamma': ['scale', 'auto']}),
-    "sgd": (SGDClassifier(loss="hinge"), {
-        # 'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron'],
-        'penalty': ['none', 'l2', 'elasticnet'],
-        'alpha': np.logspace(-6, 3, 10),
-        # 'l1_ratio': np.linspace(0, 1, 11),
-        'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
-        # 'eta0': np.logspace(-4, 0, 5)
-        }),
-    "nb" : (GaussianNB(), {}),
-    "knn": (KNeighborsClassifier(), {
-        'n_neighbors': range(1, 21),
-        # 'weights': ['uniform', 'distance'],
-        'metric': ['euclidean', 'manhattan', 'minkowski']}),
     "xgboost": (XGBClassifier(eval_metric='logloss'), {
         'n_estimators': range(50, 251, 50),
-        # 'learning_rate': [0.01, 0.025, 0.05, 0.1],
         'learning_rate': [0.01, 0.05, 0.1],
-        # 'max_depth': range(3, 11),
-        # 'min_child_weight': range(1, 7),
-        # 'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        # 'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        #'gamma': [0, 1, 10]
         }),
     "gaussian": (GaussianProcessClassifier(), {
-        # 'kernel': [kernels.RBF(), kernels.DotProduct(), kernels.WhiteKernel()],
-        'kernel': [kernels.DotProduct() + kernels.WhiteKernel(), kernels.RBF(length_scale=1.0) + kernels.WhiteKernel()],
-        # 'optimizer': ['fmin_l_bfgs_b', 'fmin_cg'],
-        #'n_restarts_optimizer': [0, 1, 2, 3, 4],
-        # 'max_iter_predict': [50, 100, 150, 200]
+        'kernel': [DotProduct() + WhiteKernel(), RBF(length_scale=1.0) + WhiteKernel()],
         })
 }
 
-
 # Training utitilites
-def _get_model(model = "xgboost"):
+def _get_model(model = "xgboost", param_string=None):
     if model == "svm":
-        return SVC(probability=True)
+        return SVC(probability=True, **training_params_from_gridsearch[param_string]) if param_string else SVC(probability=True)
     if model == "sgd":
-        return SGDClassifier()
+        return SGDClassifier(**training_params_from_gridsearch[param_string]) if param_string else SGDClassifier()
     elif model == "nb":
-        return GaussianNB()
+        return GaussianNB(**training_params_from_gridsearch[param_string]) if param_string else GaussianNB()
     elif model == "knn":
-        return KNeighborsClassifier(n_neighbors=5, metric='manhattan', weights='distance') # n_neighbors=3 if sliced, 5 if no
+        return KNeighborsClassifier(**training_params_from_gridsearch[param_string]) if param_string else KNeighborsClassifier()
     elif model == "xgboost":
-        return XGBClassifier(eval_metric="logloss")
+        return XGBClassifier(eval_metric="logloss", **training_params_from_gridsearch[param_string]) if param_string else XGBClassifier(eval_metric="logloss")
     elif model == "gaussian":
-        return GaussianProcessClassifier()
+        return GaussianProcessClassifier(**training_params_from_gridsearch[param_string]) if param_string else GaussianProcessClassifier()
     else:
         raise NotImplementedError()
+
 
 def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
     # Save the model to disk
@@ -126,10 +70,7 @@ def _save_model(model, saved_model_dir, name = 'sklearn_model.sav'):
     return model_path
 
 # Training
-def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1", random_search = False):
-
-    # Get model
-    model = _get_model(model_type)
+def training(saved_model_dir, path, model_type, batch_size = None, grid_search_metric = "f1", random_search = False, test_path=None):
     
     # Run cross_val if number of splits is defined
     if grid_search_metric:
@@ -201,6 +142,13 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
 
     # If regular training
     else:
+
+        grid_search_key = f"{model_type}_{path.split('.')[0].split('_')[-1]}_{'_'.join(path.split('.')[0].split('_')[-4:-1])}" if "embeddings" in str(path) else f"{model_type}_{path.split('.')[0].split('_')[4]}_{path.split('/')[-2]}"
+        print(grid_search_key)
+
+        # Get model
+        model = _get_model(model_type, grid_search_key)
+
         if batch_size:
             print(f"Training with batch size {batch_size}")
             n_samples_total = len(read_h5(path, col_name="idx"))
@@ -240,6 +188,7 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
             print("Creating X for sklearn model ...")
             start_time = time.time()
             X = np.array([row.ravel() for row in features]) # Flatten (512, emb_dim) into (512*emb_dim) with ravel, make list and output a numpy array
+            print(X.shape)
             print(f"Created X in {round(time.time() - start_time, 0)} seconds. Size: {round(X.nbytes / 10**9, 2)}GB")
             y = np.array(labels)
 
@@ -248,6 +197,22 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
             start_time = time.time()
             model.fit(X, y)
             print(f"Fitted model to data in {round(time.time() - start_time, 0)} seconds")
+
+        if test_path:
+            data = read_h5(test_path)
+            X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
+            y_true = np.array(data["label"])
+            y_pred = model.predict(X)
+            metrics = get_metrics(y_pred, y_true)
+            
+            print("-"*50)
+            print(f"TP: {metrics['tp']} | TN: {metrics['tn']} | FP: {metrics['fp']} | FN: {metrics['fn']}")
+            print(f"Accuracy: {round(metrics['accuracy'], 5)}")
+            print(f"Precision: {round(metrics['precision'], 5)}")
+            print(f"Recall: {round(metrics['recall'], 5)}")
+            print(f"F1-score: {round(metrics['f1_score'], 5)}")
+            print(f"F2-score: {round(metrics['f2_score'], 5)}")
+            print("-"*50)
             
         # Save model
         _save_model(model, saved_model_dir=saved_model_dir)
@@ -255,14 +220,14 @@ def training(saved_model_dir, path, model_type, batch_size = None, grid_search_m
 
 # Training based on selected feature
 SUPPORTED_EMBEDDINGS = ["glove", "glove_50", "fasttext", "bert"]
-def train_embeddings(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None):
+def train_embeddings(path: str, emb:str, model:str, batch_size = None, grid_search_metric = None, test_path=None):
     assert emb in SUPPORTED_EMBEDDINGS, "Embedding not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'embeddings' / emb / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric, test_path=test_path)
 
 SUPPORTED_LIWC_DICTS = ["2022", "2015", "2007", "2001"]
-def train_liwc(path: str, liwc_dict:str, model:str, batch_size = None, grid_search_metric = None):
+def train_liwc(path: str, liwc_dict:str, model:str, batch_size = None, grid_search_metric = None, test_path=None):
     assert liwc_dict in SUPPORTED_LIWC_DICTS, "Liwc dictionary not supported!"
-    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / liwc_dict / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric)
+    training(saved_model_dir=Path(os.path.abspath(__file__)).parents[1] / 'saved_models' / model / 'liwc' / liwc_dict / Path(path).stem, path=path, model_type=model, batch_size=batch_size, grid_search_metric=grid_search_metric, test_path=test_path)
 
 
 click.option = partial(click.option, show_default=True)
@@ -270,7 +235,8 @@ click.option = partial(click.option, show_default=True)
 @click.argument("path", nargs=1)
 @click.option("-m", "--model", type=click.Choice(["svm", "sgd", "nb", "xgboost", "knn", "gaussian"]), default="svm", help="Model to select from saved models")
 @click.option("-g", "--grid-search-metric", type=click.Choice(["f1", "recall", "recall_f1", "precision", None]), default=None, help="Perform grid search with given metric")
-def main(path, model, grid_search_metric):
+@click.option("-t", "--test-path", default=None, help="Test path if wanted to test after training")
+def main(path, model, grid_search_metric, test_path):
 
     # Check that path leads to file
     assert os.path.isfile(path), "No file found!"
@@ -287,7 +253,7 @@ def main(path, model, grid_search_metric):
         elif "bert" in path:
             emb_type = "bert"
         assert emb_type, "Incorrect format, could not find embedding!"
-        train_embeddings(path, emb_type, model, grid_search_metric = grid_search_metric)
+        train_embeddings(path, emb_type, model, grid_search_metric = grid_search_metric, test_path=test_path)
         
 
     elif "liwc" in path:
@@ -302,7 +268,7 @@ def main(path, model, grid_search_metric):
         elif "2001" in path:
             liwc_dict = "2001"
         assert liwc_dict, "Incorrect format, could not find LIWC dict!"
-        train_liwc(path, liwc_dict, model, grid_search_metric = grid_search_metric)
+        train_liwc(path, liwc_dict, model, grid_search_metric = grid_search_metric, test_path=test_path)
 
 if __name__ == "__main__":
     main()
