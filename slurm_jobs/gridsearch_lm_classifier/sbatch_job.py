@@ -5,8 +5,8 @@ variation = "train_sliced_stair_twitter"
 sizes = ["512", "256"]
 
 
-models = ["distilbert-base-uncased"]
-sizes = ["512"]
+# models = ["distilbert-base-uncased"]
+# sizes = ["512"]
 
 for model in models:
     for size in sizes:

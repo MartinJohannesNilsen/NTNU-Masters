@@ -6,7 +6,7 @@
 #SBATCH --time=120:00:00
 #SBATCH --mem=100000
 #SBATCH --gres=gpu:1
-##SBATCH --constraint="A100"
+#SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores

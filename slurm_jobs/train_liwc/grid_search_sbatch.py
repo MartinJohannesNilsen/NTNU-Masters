@@ -15,7 +15,7 @@ for model in models:
             out = f"out/grid_search_sklearn/liwc/{model}{size}/{model}_{liwc}.out"
 
             # Python properties
-            feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "splits" / "h5" / liwc / f"{train_dataset}.h5")
+            feature_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "preprocessed" / "splits" / "h5" / liwc / f"{train_dataset}.h5")
             
             # Run sbatch
             sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=feature_path={feature_path},model={model} slurm_jobs/train_liwc/grid_search.slurm"
