@@ -1,0 +1,219 @@
+# Imports
+from functools import partial
+import os
+import sys
+from pathlib import Path
+from typing import List
+import click
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score, mean_squared_error, mean_absolute_error
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, fbeta_score
+import torch.nn as nn
+import pandas as pd
+import torch.nn.functional as F
+from ray import tune, init, cluster_resources
+from csv import QUOTE_NONE
+import csv
+csv.field_size_limit(sys.maxsize)
+import wandb
+wandb.login(key="57878dd06745f877fc0ce405c74e1a57103391f0") # TODO Make .env file for this key
+
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test"
+datasets = {
+    "train_sliced_stair_twitter_512": base_path / "new" / "train_sliced_stair_twitter_512.csv",
+    "train_sliced_stair_twitter_256": base_path / "new" / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter_512": base_path / "new" / "train_no_stair_twitter_512.csv",
+    "train_no_stair_twitter_256": base_path / "new" / "train_no_stair_twitter_256.csv",
+    
+    "test_sliced_stair_twitter_512": base_path / "new" / "test_sliced_stair_twitter_512.csv",
+    "test_sliced_stair_twitter_256": base_path / "new" / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter_512": base_path / "new" / "test_no_stair_twitter_512.csv",
+    "test_no_stair_twitter_256": base_path / "new" / "test_no_stair_twitter_256.csv",
+    
+    "val_sliced_stair_twitter_512": base_path / "new" / "val_sliced_stair_twitter_512.csv",
+    "val_sliced_stair_twitter_256": base_path / "new" / "val_sliced_stair_twitter_256.csv",
+    "val_no_stair_twitter_512": base_path / "new" / "val_no_stair_twitter_512.csv",
+    "val_no_stair_twitter_256": base_path / "new" / "val_no_stair_twitter_256.csv",
+    
+    "shooter_hold_out": base_path / "shooter_hold_out.csv",
+}
+
+def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
+
+    # Read csv
+    df = pd.read_csv(datasets[dataset], encoding="utf-8", delimiter="‎", engine="python", quoting=QUOTE_NONE)
+
+    # Filter out date and name
+    df = df.drop(["date", "name"], axis=1)
+
+    return df
+
+def compute_metrics_for_classification(eval_pred):
+    logits, labels = eval_pred
+    predicted_labels = logits.argmax(axis=-1)
+
+    accuracy = accuracy_score(labels, predicted_labels)
+    precision = precision_score(labels, predicted_labels)
+    recall = recall_score(labels, predicted_labels)
+    f1 = f1_score(labels, predicted_labels)
+    f0_5 = fbeta_score(labels, predicted_labels, beta=0.5)
+    f2 = fbeta_score(labels, predicted_labels, beta=2)
+
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "f0.5": f0_5,
+        "f2": f2
+    }
+
+class MakeTorchData(torch.utils.data.Dataset):
+    def __init__(self, encodings, labels):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __getitem__(self, idx):
+        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
+        item["labels"] = torch.tensor(self.labels[idx])
+        return item
+
+    def __len__(self):
+        return len(self.labels)
+        # return 50
+
+def train(
+        config,
+        X: List, y: List, 
+        X_val: List = None, y_val: List = None, 
+        val_portion: float = 0.2, 
+        max_length: int = 512, 
+        model_name: str = "distilbert-base-uncased", 
+        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
+        log_path: str = "./logs",
+        ):
+
+    # Initialize device
+    if torch.cuda.is_available(): 
+        dev = "cuda:0" 
+    else: 
+        dev = "cpu" 
+    device = torch.device(dev)
+    
+    # Initialize tokenizer and model
+    id2label = {0: "NEGATIVE", 1: "POSITIVE"}
+    label2id = {"NEGATIVE": 0, "POSITIVE": 1}
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 2, id2label=id2label, label2id=label2id).to(device)
+
+    # Split data into train and validation sets
+    if X_val is not None and y_val is not None:
+        X_train, y_train = X, y
+    else:
+        if X_val is not None or y_val is not None:
+            print("Both X_val and y_val need to be input, defaulting to val_portion split of train!")
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_portion) # Train Val split
+    
+    # Encode the text
+    # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    train_encodings = tokenizer(X_train, truncation=True, padding=True, max_length=max_length)
+    val_encodings = tokenizer(X_val, truncation=True, padding=True, max_length=max_length)
+
+    # convert our tokenized data into a torch Dataset
+    train_dataset = MakeTorchData(train_encodings, y_train.ravel())
+    val_dataset = MakeTorchData(val_encodings, y_val.ravel())
+
+    training_args = TrainingArguments(
+        output_dir = saved_model_checkpoints,          
+        logging_dir = log_path,            
+        num_train_epochs=config["epochs"],
+        per_device_train_batch_size=config["train_batch_size"],
+        per_device_eval_batch_size=32,
+        weight_decay=config["weight_decay"],
+        learning_rate=config["learning_rate"],
+        save_total_limit = 10,
+        load_best_model_at_end = True,
+        metric_for_best_model = 'f2',    
+        evaluation_strategy = "epoch",
+        save_strategy = "epoch",
+        report_to='wandb',  # enable reporting to W&B
+    )
+
+    trainer = Trainer(
+        model = model,                         
+        args = training_args,                  
+        train_dataset = train_dataset,         
+        eval_dataset = val_dataset,
+        compute_metrics = compute_metrics_for_classification,
+    )
+
+    # Train the model
+    trainer.train()
+        
+
+click.option = partial(click.option, show_default=True)
+@click.command()
+@click.option("-m", "--model", type=click.Choice(["distilbert-base-uncased", "bert-base-uncased", "roberta-base", "albert-base-v2"]), default="distilbert-base-uncased", help="Model name")
+@click.option("-s", "--size", type=click.Choice(["512", "256"]), default="512", help="Text max length")
+@click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter_256", help="Dataset to use")
+def main(model, size, dataset):
+    # Parameters
+    MAX_LENGTH = int(size)
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_classifier_grid" / model / dataset)
+    LOG_PATH = "./logs"
+
+    # Data
+    df_train = _get_dataframe(dataset=dataset)
+    df_val = _get_dataframe(dataset=dataset.replace("train", "val"))
+    # df_test = _get_dataframe(dataset=dataset.replace("train", "test"))
+
+    # Set X and y
+    X_train = df_train.text.values.tolist()
+    y_train = df_train.label.values
+    X_val = df_val.text.values.tolist()
+    y_val = df_val.label.values
+    
+    # X_test = df_test.text.values.tolist()
+    # y_test = df_test.label.values
+
+    config = {
+        "epochs": tune.grid_search([2, 3, 5]),
+        "train_batch_size": tune.grid_search([8, 16, 32]),
+        "weight_decay": tune.grid_search([0.0, 0.01]),
+        "learning_rate": tune.grid_search([5e-5, 3e-5, 1e-5]),
+        
+        # "epochs": tune.grid_search([1]),
+        # "train_batch_size": tune.grid_search([32]),
+        # "weight_decay": tune.grid_search([0.0]),
+        # "learning_rate": tune.grid_search([1e-5]),
+    }
+
+    def get_available_gpus():
+        if torch.cuda.is_available():
+            return torch.cuda.device_count()
+        else:
+            return 0
+
+    num_gpus = get_available_gpus()
+
+    # Start the hyperparameter tuning
+    init(num_gpus=1)
+    print(cluster_resources())
+
+    # init(num_gpus=num_gpus)
+    analysis = tune.run(tune.with_parameters(train, X=X_train, y=y_train, X_val=X_val, y_val=y_val, max_length=MAX_LENGTH, model_name=model, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH), config=config)
+
+    # print("Best config: ", analysis.get_best_config(metric="f1", mode="max"))
+
+    # Get the best trial
+    best_trial = analysis.get_best_trial("f1", mode="max", scope="all")
+
+    # Print the best config and all the metrics
+    print("Best config: ", best_trial.config)
+    print("Best metrics: ", best_trial.last_result)
+
+
+if __name__ == "__main__":
+    main()

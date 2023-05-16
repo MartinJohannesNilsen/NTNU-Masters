@@ -1,0 +1,69 @@
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer, TfidfTransformer
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+import pandas as pd
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report
+from pathlib import Path
+import os
+import sys
+from csv import QUOTE_NONE
+from sklearn.metrics import make_scorer, recall_score, f1_score, precision_score, fbeta_score
+import click
+
+
+def train(max_len: int):
+    base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new_preprocessed"
+    train_path = base_path / f"train_sliced_stair_twitter_{max_len}_preprocessed.csv"
+    val_path = base_path / f"val_sliced_stair_twitter_{max_len}_preprocessed.csv"
+    
+    train_df = pd.read_csv(train_path, sep="‎", quoting=QUOTE_NONE, engine="python")
+    val_df = pd.read_csv(val_path, sep="‎", quoting=QUOTE_NONE, engine="python")
+
+    train_df = pd.concat([train_df, val_df], axis=0)
+
+    x_train = train_df["text"].values.astype('U')
+    y_train = train_df["label"].values
+
+    tfidf = TfidfVectorizer().fit(x_train)
+    tfidf_train = tfidf.transform(x_train).toarray()
+
+    scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'f2': make_scorer(fbeta_score, beta=2), 'precision': make_scorer(precision_score)}
+
+    # Train
+    print("training")
+    svm = SVC()
+
+    gs_params = {
+        'C': [0.01, 0.1, 1, 10, 100],
+        'kernel': ['linear', 'rbf', 'sigmoid'],
+        # 'degree': [2, 3, 4, 5],
+        'gamma': ['scale', 'auto']
+        }
+
+    cv = StratifiedKFold(n_splits=3)
+    grid_search = GridSearchCV(svm, gs_params, scoring=scoring, refit="f2", cv=cv, n_jobs=-1, verbose=1)
+    print("gridsearch")
+    svm = grid_search.fit(tfidf_train, y_train)
+    x_train, tfidf_train, y_train = None, None, None
+    
+    test_path = base_path / f"test_sliced_stair_twitter_{max_len}_preprocessed.csv"
+    test_df = pd.read_csv(test_path, sep="‎", quoting=QUOTE_NONE, engine="python")
+
+    print("testing...")
+
+    x_test = test_df["text"].values.astype('U')
+    tfidf_test = tfidf.transform(x_test).toarray()
+    y_test = test_df["label"].values
+
+    pred_test_labels = svm.predict(tfidf_test)
+    print(classification_report(y_test, pred_test_labels))
+
+@click.command()
+@click.option("-l", "--max_len", type=click.INT, help="Max length of sentence to be allowed. Determines padding and truncation")
+def main(max_len: int):
+    train(max_len)
+
+if __name__ == "__main__":
+    main()

@@ -17,19 +17,19 @@ sys.path.append(experiments_dir)
 from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, print_metrics_tabulated
 
 
-base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test"
 datasets = {
-    "train_sliced_stair_twitter_512": base_path / "train_sliced_stair_twitter_512.csv",
-    "train_sliced_stair_twitter_256": base_path / "train_sliced_stair_twitter_256.csv",
-    "train_no_stair_twitter_512": base_path / "train_no_stair_twitter.csv",
-    "train_no_stair_twitter_256": base_path / "train_no_stair_twitter_256.csv",
+    "train_sliced_stair_twitter_512": base_path / "new" / "train_sliced_stair_twitter_512.csv",
+    "train_sliced_stair_twitter_256": base_path / "new" / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter_512": base_path / "new" / "train_no_stair_twitter_512.csv",
+    "train_no_stair_twitter_256": base_path / "new" / "train_no_stair_twitter_256.csv",
     
-    "test_sliced_stair_twitter_512": base_path / "test_sliced_stair_twitter.csv",
-    "test_sliced_stair_twitter_256": base_path / "test_sliced_stair_twitter_256.csv",
-    "test_no_stair_twitter_512": base_path / "test_no_stair_twitter.csv",
-    "test_no_stair_twitter_256": base_path / "test_no_stair_twitter_256.csv",
+    "test_sliced_stair_twitter_512": base_path / "new" / "test_sliced_stair_twitter_512.csv",
+    "test_sliced_stair_twitter_256": base_path / "new" / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter_512": base_path / "new" / "test_no_stair_twitter_512.csv",
+    "test_no_stair_twitter_256": base_path / "new" / "test_no_stair_twitter_256.csv",
     
-    "shooter_hold_out": base_path / "shooter_hold_out_test.csv",
+    "shooter_hold_out": base_path / "shooter_hold_out.csv",
 }
 def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
 

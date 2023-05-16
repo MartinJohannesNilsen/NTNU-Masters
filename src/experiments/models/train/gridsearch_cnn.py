@@ -36,7 +36,12 @@ def get_metrics(predictions, labels) -> dict:
     precision = (tp) / (tp + fp)
     recall = (tp) / (tp + fn)
     specificity = (tn) / (tn + fp)
+
     fscore = 2 * (precision * recall) / (precision + recall)
+    beta = 0.5
+    f05score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
+    beta = 2
+    f2score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
     
     try:
         roc_auc = roc_auc_score(labels, predictions)
@@ -54,7 +59,9 @@ def get_metrics(predictions, labels) -> dict:
         "recall": recall,
         "specificity": specificity,
         "f1_score": fscore,
-        "roc_auc": roc_auc
+        "roc_auc": roc_auc,
+        "f2_score": f2score,
+        "f_05_score": f05score
     }
 
     return metrics
@@ -229,8 +236,6 @@ def grid_search(config):
                 vinputs, vlabels = vinputs.to(device), vlabels.to(float).to(device)
 
                 voutputs = model(vinputs).to(float)
-                [true_vlabels.append(vlabel) for vlabel in vlabels]
-                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
 
                 vweighting = []
                 for l in vlabels:
@@ -242,6 +247,12 @@ def grid_search(config):
 
                 criterion = nn.BCELoss(weight=vweighting)
                 vloss = criterion(voutputs.squeeze(dim=1), vlabels)
+
+                voutputs = voutputs.cpu()
+                vlabels = vlabels.cpu()
+                [true_vlabels.append(vlabel) for vlabel in vlabels]
+                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+
                 val_loss += vloss.item()
 
         avg_vloss = val_loss/len(val_loader)    
@@ -290,6 +301,9 @@ def test_best_model(best_result):
             inputs, labels = data
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = best_trained_model(inputs).squeeze()
+
+            outputs = outputs.cpu()
+            labels = labels.cpu()
 
             [true_labels.append(label) for label in labels]
             [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
@@ -342,11 +356,13 @@ def main(emb_type: str, max_len: int, pad_pos: str, num_samples=10, max_num_epoc
     custom_reporter.add_metric_column("avg_train_loss")
     custom_reporter.add_metric_column("loss")
 
+    num_gpus = torch.cuda.device_count()
+    print(f"num_gpus: {num_gpus}")
 
     tuner = tune.Tuner(
         tune.with_resources(
             tune.with_parameters(grid_search),
-            resources={"cpu": 1}
+            resources={"gpu": num_gpus}
         ),
         tune_config=tune.TuneConfig(
             metric="f1_score",

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from ray import tune
+from ray import tune, get_gpu_ids
 from ray.air import session, RunConfig
 from ray.air.checkpoint import Checkpoint
 from ray.tune import CLIReporter
@@ -38,7 +38,12 @@ def get_metrics(predictions, labels) -> dict:
     precision = (tp) / (tp + fp)
     recall = (tp) / (tp + fn)
     specificity = (tn) / (tn + fp)
+
     fscore = 2 * (precision * recall) / (precision + recall)
+    beta = 0.5
+    f05score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
+    beta = 2
+    f2score = (1 + beta**2) * (precision * recall) / ((beta**2 * precision) + recall)
     
     try:
         roc_auc = roc_auc_score(labels, predictions)
@@ -56,7 +61,9 @@ def get_metrics(predictions, labels) -> dict:
         "recall": recall,
         "specificity": specificity,
         "f1_score": fscore,
-        "roc_auc": roc_auc
+        "roc_auc": roc_auc,
+        "f2_score": f2score,
+        "f_05_score": f05score
     }
 
     return metrics
@@ -177,17 +184,21 @@ model_to_dim = {
 
 torch.manual_seed(0)
 def grid_search(config):
-
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print("ray.get_gpu_ids(): {}".format(get_gpu_ids()))
+    print("CUDA_VISIBLE_DEVICES: {}".format(os.environ["CUDA_VISIBLE_DEVICES"]))
 
     #search_folder = create_search_run()
 
-    model = LSTMTextClassifier(emb_dim=config["emb_dim"], hidden_size=config['hidden_size'], dropout=config["dropout"], num_layers=config["num_layers"]).to(device)
+    model = LSTMTextClassifier(emb_dim=config["emb_dim"], hidden_size=config['hidden_size'], dropout=config["dropout"], num_layers=config["num_layers"])
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda:0"
+    model.to(device)
+    print(f"device: {device}")
 
-    check_padding = config["check_padding"]
     emb_str = f"{config['emb_type']}_{model_to_dim[config['emb_type']]}" if config["emb_type"] != "glove_50" else config["emb_type"]
 
-    base_path = Path(os.path.abspath(__file__)).parents[7] / "features" / "embeddings" / "new"
+    base_path = Path(os.path.abspath(__file__)).parents[6] / "features" / "embeddings" / "new"
     print(f"base_path: {base_path}")
     train_path = base_path / f"train_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
     val_path = base_path / f"val_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
@@ -234,7 +245,7 @@ def grid_search(config):
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(inputs, start, end).to(float) if config["check_padding"] else model(inputs, 0, -1).to(float)
+            outputs = model(inputs, start, end).to(float)
             loss = criterion(outputs.squeeze(dim=1), labels)
             loss.backward()
             optimizer.step()
@@ -253,9 +264,7 @@ def grid_search(config):
                 vinputs, vlabels, vstart, vend = vdata
                 vinputs, vlabels = vinputs.to(device), vlabels.to(float).to(device)
 
-                voutputs = model(vinputs, vstart, vend).to(float) if config["check_padding"] else model(vinputs, 0, -1).to(float)
-                [true_vlabels.append(vlabel) for vlabel in vlabels]
-                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+                voutputs = model(vinputs, vstart, vend).to(float)
 
                 vweighting = []
                 for l in vlabels:
@@ -269,12 +278,18 @@ def grid_search(config):
                 vloss = criterion(voutputs.squeeze(dim=1), vlabels)
                 val_loss += vloss.item()
 
+                voutputs = voutputs.cpu()
+                vlabels = vlabels.cpu()
+
+                [true_vlabels.append(vlabel) for vlabel in vlabels]
+                [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+
         avg_vloss = val_loss/len(val_loader)    
 
         # Here we save a checkpoint. It is automatically registered with
         # Ray Tune and can be accessed through `session.get_checkpoint()`
         # API in future iterations.
-        gs_path = f"LSTM_gridsearch_sliced_stair_twitter_{config['emb_type']}_{config['emb_dim']}_{config['max_len']}_no_pack"
+        gs_path = f"LSTM_gridsearch_sliced_stair_twitter_{config['emb_type']}_{config['emb_dim']}_{config['max_len']}_gpu"
         os.makedirs(gs_path, exist_ok=True)
         torch.save(
             (model.state_dict(), optimizer.state_dict()), f"{gs_path}/checkpoint.pt")
@@ -314,7 +329,10 @@ def test_best_model(best_result):
         for data in test_loader:
             inputs, labels, start, end = data
             inputs, labels = inputs.to(device), labels.to(device)
-            outputs = best_trained_model(inputs, start, end).to(float) if config["check_padding"] else best_trained_model(inputs, 0, -1).to(float)
+            outputs = best_trained_model(inputs, start, end).to(float)
+
+            outputs = outputs.cpu()
+            labels = labels.cpu()
 
             [true_labels.append(label) for label in labels]
             [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
@@ -329,10 +347,8 @@ def test_best_model(best_result):
 @click.option("-e", "--emb_type", type=click.Choice(["fasttext", "glove", "bert", "glove_50"]) , help="Embedding type to be used for training")
 @click.option("-l", "--max_len", type=click.INT, help="Max length of sentence to be allowed. Determines padding and truncation")
 @click.option("-p", "--pad_pos", type=click.Choice(["head", "tail", "split"]), help="Position of padding to be used")
-@click.option("-c", "--check_padding", type=click.Choice(["False", "True"]), help="Whether to check the last and first hidden state of entire emb or just valid ones")
-def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samples=10, max_num_epochs=10):
+def main(emb_type: str, max_len: int, pad_pos: str, num_samples=10, max_num_epochs=10):
     emb_dim = model_to_dim[emb_type]
-    check_padding = True if check_padding == "True" else False 
     config = {
         "emb_dim": tune.choice([emb_dim]),
         "dropout": tune.choice([0.3, 0.4, 0.5, 0.6]),
@@ -341,7 +357,6 @@ def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samp
         "max_len": max_len,
         "emb_type": emb_type,
         "pad_pos": pad_pos,
-        "check_padding": check_padding,
         "hidden_size": tune.choice([64, 128, 256]),
         "num_layers": tune.choice([1, 2, 3])
     }
@@ -366,19 +381,21 @@ def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samp
 
     custom_reporter = TrialTerminationReporter()
     custom_reporter.add_metric_column("epoch")
-    custom_reporter.add_metric_column("f1_score")
+    custom_reporter.add_metric_column("f2_score")
     custom_reporter.add_metric_column("avg_train_loss")
     custom_reporter.add_metric_column("loss")
 
-    local_dir = str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "lstm" / "lstm_no_pack_fix")
+    local_dir = str(Path(os.path.abspath(__file__)).parents[0] / "gs_results" / "lstm_gpu")
+    num_gpus = torch.cuda.device_count()
+    print(f"num_gpus: {num_gpus}")
 
     tuner = tune.Tuner(
         tune.with_resources(
             tune.with_parameters(grid_search),
-            resources={"cpu": 1}
+            resources={"gpu": num_gpus}
         ),
         tune_config=tune.TuneConfig(
-            metric="f1_score",
+            metric="f2_score",
             mode="max",
             scheduler=scheduler,
             num_samples=num_samples,
@@ -398,7 +415,9 @@ def main(emb_type: str, max_len: int, pad_pos: str, check_padding: str, num_samp
     for d in dfs.values():
         ax = d.mean_accuracy.plot(ax=ax, legend=False) """
     
-    best_result = results.get_best_result("f1_score", "max")
+    
+    
+    best_result = results.get_best_result("f2_score", "max")
 
     print("Best trial config: {}".format(best_result.config))
     print("Best trial final validation loss: {}".format(

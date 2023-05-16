@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=feature_path,model
+#SBATCH --export=feature_path,model,test_path
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -47,7 +47,7 @@ python -m nltk.downloader stopwords
 echo "Running code"
 echo ""
 cd "src/experiments/models/train"
-python3 -u train_sklearn.py $feature_path --model $model
+python3 -u train_sklearn.py $feature_path --model $model --test-path $test_path
 
 # Print idun stats
 uname -a

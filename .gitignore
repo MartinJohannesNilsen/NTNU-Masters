@@ -4,6 +4,7 @@ wandb/
 out/
 embeddings/
 gs_results/
+logs/
 
 .DS_Store
 .vscode

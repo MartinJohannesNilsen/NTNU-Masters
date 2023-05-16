@@ -16,19 +16,24 @@ csv.field_size_limit(sys.maxsize)
 import wandb
 wandb.login(key="57878dd06745f877fc0ce405c74e1a57103391f0") # TODO Make .env file for this key
 
-base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
+base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test"
 datasets = {
-    "train_sliced_stair_twitter_512": base_path / "train_sliced_stair_twitter_512.csv",
-    "train_sliced_stair_twitter_256": base_path / "train_sliced_stair_twitter_256.csv",
-    "train_no_stair_twitter_512": base_path / "train_no_stair_twitter.csv",
-    "train_no_stair_twitter_256": base_path / "train_no_stair_twitter_256.csv",
+    "train_sliced_stair_twitter_512": base_path / "new" / "train_sliced_stair_twitter_512.csv",
+    "train_sliced_stair_twitter_256": base_path / "new" / "train_sliced_stair_twitter_256.csv",
+    "train_no_stair_twitter_512": base_path / "new" / "train_no_stair_twitter_512.csv",
+    "train_no_stair_twitter_256": base_path / "new" / "train_no_stair_twitter_256.csv",
     
-    "test_sliced_stair_twitter_512": base_path / "test_sliced_stair_twitter.csv",
-    "test_sliced_stair_twitter_256": base_path / "test_sliced_stair_twitter_256.csv",
-    "test_no_stair_twitter_512": base_path / "test_no_stair_twitter.csv",
-    "test_no_stair_twitter_256": base_path / "test_no_stair_twitter_256.csv",
+    "test_sliced_stair_twitter_512": base_path / "new" / "test_sliced_stair_twitter_512.csv",
+    "test_sliced_stair_twitter_256": base_path / "new" / "test_sliced_stair_twitter_256.csv",
+    "test_no_stair_twitter_512": base_path / "new" / "test_no_stair_twitter_512.csv",
+    "test_no_stair_twitter_256": base_path / "new" / "test_no_stair_twitter_256.csv",
     
-    "shooter_hold_out": base_path / "shooter_hold_out_test.csv",
+    "val_sliced_stair_twitter_512": base_path / "new" / "val_sliced_stair_twitter_512.csv",
+    "val_sliced_stair_twitter_256": base_path / "new" / "val_sliced_stair_twitter_256.csv",
+    "val_no_stair_twitter_512": base_path / "new" / "val_no_stair_twitter_512.csv",
+    "val_no_stair_twitter_256": base_path / "new" / "val_no_stair_twitter_256.csv",
+    
+    "shooter_hold_out": base_path / "shooter_hold_out.csv",
 }
 
 def _get_dataframe(dataset: str = "train_sliced_stair_twitter"):
@@ -72,6 +77,7 @@ class MakeTorchData(torch.utils.data.Dataset):
 
 def train(
         X: List, y: List, 
+        X_val: List = None, y_val: List = None, 
         X_test: List = None, y_test: List = None, 
         val_portion: float = 0.2, 
         max_length: int = 512, 
@@ -80,8 +86,6 @@ def train(
         saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
         log_path: str = "./logs"
         ):
-    
-    assert (X_test != None and y_test != None) or (X_test == None and y_test == None), "If test set defined, you need to pass in both!" 
 
     # Initialize device
     if torch.cuda.is_available(): 
@@ -95,7 +99,12 @@ def train(
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels = 1).to(device)
 
     # Split data into train and validation sets
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_portion) # Train Val split
+    if X_val is not None and y_val is not None:
+        X_train, y_train = X, y
+    else:
+        if X_val is not None or y_val is not None:
+            print("Both X_val and y_val need to be input, defaulting to val_portion split of train!")
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_portion) # Train Val split
     
     # Encode the text
     # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
@@ -147,7 +156,7 @@ click.option = partial(click.option, show_default=True)
 @click.command()
 @click.option("-m", "--model", type=click.Choice(["distilbert-base-uncased", "bert-base-uncased", "roberta-base", "albert-base-v2"]), default="distilbert-base-uncased", help="Model name")
 @click.option("-s", "--size", type=click.Choice(["512", "256"]), default="512", help="Text max length")
-@click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter", help="Dataset to use")
+@click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter_256", help="Dataset to use")
 def main(model, size, dataset):
     # Parameters
     VAL_PORTION = 0.2
@@ -157,17 +166,20 @@ def main(model, size, dataset):
     LOG_PATH = "./logs"
 
     # Data
-    df = _get_dataframe(dataset=f"{dataset}_{size}")
+    df_train = _get_dataframe(dataset=dataset)
+    df_val = _get_dataframe(dataset=dataset.replace("train", "val"))
+    df_test = _get_dataframe(dataset=dataset.replace("train", "test"))
 
     # Set X and y
-    X = df.text.values.tolist()
-    y = df.label.values
+    X_train = df_train.text.values.tolist()
+    y_train = df_train.label.values
+    X_val = df_val.text.values.tolist()
+    y_val = df_val.label.values
+    
+    X_test = df_test.text.values.tolist()
+    y_test = df_test.label.values
 
-    # test_df = _get_dataframe(dataset="test")
-    # X_test = test_df.text.values.tolist()
-    # y_test = test_df.label.values
-
-    train(X=X, y=y, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    train(X=X_train, y=y_train, X_val=X_val, y_val=y_val, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
 
 if __name__ == "__main__":
     main()
