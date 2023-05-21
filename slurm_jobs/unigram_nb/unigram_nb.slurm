@@ -13,7 +13,7 @@
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
 #SBATCH --job-name=unigram_nb
-#SBATCH --output=out/unigram_nb/unigram_nb.out
+#SBATCH --output=out/unigram_nb/unigram_nb_512.out
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -48,7 +48,7 @@ python -m nltk.downloader stopwords
 echo "Running code"
 cd "src/experiments/models/train"
 echo "Recall-F1"
-python3 -u unigram_nb.py
+python3 -u unigram_nb.py --max_len $max_len
 
 # Print idun stats
 uname -a

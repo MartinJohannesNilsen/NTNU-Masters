@@ -1,6 +1,6 @@
 import subprocess
 
-emb_type = ["glove", "glove_50", "fasttext", "bert"]
+emb_type = ["bert"]
 max_len = [512, 256]
 pad_pos = ["head", "split", "tail"]
 
