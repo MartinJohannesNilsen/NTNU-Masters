@@ -10,7 +10,7 @@ import sys
 import pandas as pd
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
-from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, get_posts_ordered_by_confusion_matrix, print_tabulated_metric_iterations
+from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, get_posts_ordered_by_confusion_matrix, print_metrics_tabulated, print_metrics_simplified
 from experiments.features._load_and_store_emb_batches import read_h5
 
 
@@ -20,21 +20,32 @@ def test_embeddings(model_path, test_path, batch_size: int = None):
     model = pickle.load(open(model_path, 'rb'))
 
     if not batch_size:
-        data = read_h5(test_path)
+        # data = read_h5(test_path)
+        data = read_h5(test_path, chunk_size=10)
         X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
         y_true = np.array(data["label"])
-        y_pred = [prob[1] for prob in model.predict_proba(X)]
+
+        y_pred = list(model.predict(X))
+        y_score = [prob[1] for prob in model.predict_proba(X)]
+        # y_score_pred = [np.argmax(prob) for prob in model.predict_proba(X)] # Same as y_pred
+        # y_confidence = [max(prob) for prob in model.predict_proba(X)]
+        idxs = np.array(data["idx"])
+        
     else:
         n_total_samples = len(read_h5(test_path, col_name="idx"))
         y_pred = []
+        y_score = []
         y_true = []
+        idxs = []
         for i in range(0, n_total_samples, batch_size):
             data = read_h5(test_path, start=i, chunk_size=batch_size)
             X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
-            y_pred.extend([prob[1] for prob in model.predict_proba(X)])
+            y_pred.extend(model.predict(X))
+            y_score.extend([prob[1] for prob in model.predict_proba(X)])
             y_true.extend(data["label"])
+            idxs.extend(data["idx"])
 
-    return y_pred, y_true
+    return y_pred, y_score, y_true, idxs
 
 
 def test_liwc(model_path, test_path, batch_size: int = None):
@@ -46,23 +57,31 @@ def test_liwc(model_path, test_path, batch_size: int = None):
         data = read_h5(test_path)
         X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
         y_true = np.array(data["label"])
-        y_pred = [prob[1] for prob in model.predict_proba(X)]
+
+        y_pred = list(model.predict(X))
+        y_score = [prob[1] for prob in model.predict_proba(X)]
+        idxs = np.array(data["idx"])
+
     else:
         n_total_samples = len(read_h5(test_path, col_name="idx"))
         y_pred = []
+        y_score = []
         y_true = []
+        idxs = []
         for i in range(0, n_total_samples, batch_size):
             data = read_h5(test_path, start=i, chunk_size=batch_size)
             X = np.array([element.ravel().tolist() for element in data["emb_tensor"]])
-            y_pred.extend([prob[1] for prob in model.predict_proba(X)])
+            y_pred.extend(model.predict(X))
+            y_score.extend([prob[1] for prob in model.predict_proba(X)])
             y_true.extend(data["label"])
+            idxs.extend(data["idx"])
 
-    return y_pred, y_true
+    return y_pred, y_score, y_true, idxs
 
 def _get_data_path_from_emb_path(emb_path: str):
-    dataset_dir = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test"
+    dataset_dir = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
     purpose = "shooter_hold_out_test" if "hold_out_test" in emb_path else "test" if "test" in emb_path else "train"
-    size = "_256" if "256" in emb_path else ""
+    size = "_256" if "256" in emb_path else "_512"
     stair_twitter = "_no_stair_twitter" if "no_stair_twitter" in emb_path else "_sliced_stair_twitter" if "sliced_stair_twitter" in emb_path else ""
     file_path = str(dataset_dir / (purpose + stair_twitter + size + ".csv"))
     assert os.path.isfile(file_path), "File not found!"
@@ -70,7 +89,8 @@ def _get_data_path_from_emb_path(emb_path: str):
 
 
 def get_texts_matching_tensors(emb_features_path, matching_dataset_path) -> List[str]:
-    indexes = read_h5(emb_features_path, col_name="idx")
+    # indexes = read_h5(emb_features_path, col_name="idx")
+    indexes = read_h5(emb_features_path, col_name="idx", chunk_size=10)
     dataset = pd.read_csv(matching_dataset_path, sep="‎", quoting=QUOTE_NONE, engine="python")
     filtered_df = dataset.loc[dataset.index[indexes]]
     assert len(filtered_df.index) == len(indexes), "Could not align h5 indices with original dataset!"
@@ -90,10 +110,11 @@ click.option = partial(click.option, show_default=True)
 @click.argument("model_path", nargs=1)
 @click.argument("test_path", nargs=1)
 @click.option("-t", "--threshold", type=float, default=0.5, help="Threshold for predictions")
-@click.option("-l", "--list-of-thresholds", type=List[float], default=None, help="List of thresholds to iterate over")
+@click.option("-l", "--use-list-of-thresholds", is_flag=True, help="Iterate over list of thresholds")
 @click.option("-o", "--output", type=str, help="Output posts grouped by confusion matrix to file")
-def main(model_path, test_path, threshold, list_of_thresholds, output):
+def main(model_path, test_path, threshold, use_list_of_thresholds, output):
     assert threshold >= 0 and threshold <= 1, "Threshold needs to be between 0 and 1!"
+    list_of_thresholds = list(range(0, 1, 0.05)) if use_list_of_thresholds else None
 
     # Check that paths leads to files
     assert os.path.isfile(model_path), "No model file found!"
@@ -101,53 +122,70 @@ def main(model_path, test_path, threshold, list_of_thresholds, output):
 
     def test(t):
 
-        # Threshold
-        print(f"Threshold = {threshold}")
-
         if "embeddings" in model_path:
             assert "embeddings" in test_path, "Mismatch between model and test embeddings path!"
-            y_pred, y_true = test_embeddings(model_path, test_path)
-            out = [1 if pred > t else 0 for pred in y_pred]
-            metrics = get_metrics(out, y_true)
-            return metrics, out, y_true
+            pred_labels, pred_scores, y_true, idxs = test_embeddings(model_path, test_path)
+            # pred_labels = [1 if pred > t else 0 for pred in pred_scores]
+            metrics = get_metrics(pred_labels, y_true)
         
         elif "liwc" in model_path:
             assert "liwc" in test_path, "Mismatch between model and test LIWC dictionaries path!"
-            y_pred, y_true = test_liwc(model_path, test_path)
-            out = [1 if pred > t else 0 for pred in y_pred]
-            metrics = get_metrics(out, y_true)
-            return metrics, out, y_true
+            pred_labels, pred_scores, y_true, idxs = test_liwc(model_path, test_path)
+            # pred_labels = [1 if pred > t else 0 for pred in pred_scores]
+            metrics = get_metrics(pred_labels, y_true)
+        
+        return metrics, pred_labels, pred_scores, y_true, idxs
 
-    def write_output(pred, labels):
+
+    def uniquify(path):
+        filename, extension = os.path.splitext(path)
+        counter = 1
+
+        while os.path.exists(path):
+            # path = filename + " (" + str(counter) + ")" + extension
+            path = filename + "_" + str(counter) + extension
+            counter += 1
+
+        return path
+
+    def write_output(preds, labels, t, idxs = None, scores = None):
         # Get texts ordered by confusion matrix
         emb_text_path = _get_data_path_from_emb_path(test_path)
         emb_texts = get_texts_matching_tensors(test_path, emb_text_path)
-        post_dict = get_posts_ordered_by_confusion_matrix(emb_texts, pred, labels)
+        post_dict = get_posts_ordered_by_confusion_matrix(emb_texts, preds, labels)
         
         # Write to output file
         os.makedirs(os.path.dirname(output), exist_ok=True)
-        with open(output, "w") as f:
+        with open(uniquify(output), "w") as f:
             f.write(f"{'%'*20}\nThreshold = {t}\n{'%'*20}\n")
             for k, v in post_dict.items():
                 f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
                 f.writelines(line + "\n" for line in v)
                 f.writelines("\n")
-
+        
+        if idxs is not None and scores is not None:
+            os.makedirs(os.path.dirname(output.replace("posts", "scores")), exist_ok=True)
+            with open(uniquify(output.replace("posts", "scores")), "w") as f:
+                f.write("idx,pred_val,pred_label,label\n")
+                
+                for i, score, pred, label in zip(idxs, scores, preds, labels):
+                    f.write(f"{i},{score},{pred},{label}\n")
 
     if list_of_thresholds:
         list_of_metrics = []
         for t in list_of_thresholds:
-            metrics, out, y_true = test(threshold)
+            metrics, pred_labels, pred_scores, y_true, idxs = test(t)
             list_of_metrics.append(metrics)
             if output:
-                write_output(out, y_true)
-        print_tabulated_metric_iterations(keys=list_of_thresholds, list_of_metrics=list_of_metrics)
+                write_output(pred_labels, y_true, t, idxs, pred_scores)
+        print_metrics_tabulated(keys=list_of_thresholds, list_of_metrics=list_of_metrics)
 
     else:
-        metrics, out, y_true = test(threshold)
-        print_metrics_comprehensive(metrics)
+        metrics, pred_labels, pred_scores, y_true, idxs = test(threshold)
+        # print_metrics_comprehensive(metrics)
+        print_metrics_simplified(metrics)
         if output:
-            write_output(out, y_true)
+            write_output(pred_labels, y_true, threshold, idxs, pred_scores)
 
 
 if __name__ == "__main__":
