@@ -48,13 +48,12 @@ def train(max_len: int):
     svm = SVC()
 
     gs_params = {
-        'C': [0.01, 0.1, 1, 10, 100],
-        'kernel': ['linear', 'rbf', 'sigmoid'],
-        # 'degree': [2, 3, 4, 5],
+        'C': [1, 10, 100],
+        'kernel': ['linear'],
         'gamma': ['scale', 'auto']
         }
 
-    cv = StratifiedKFold(n_splits=3)
+    cv = StratifiedKFold(n_splits=2)
     grid_search = GridSearchCV(svm, gs_params, scoring=scoring, refit="f2", cv=cv, n_jobs=-1, verbose=1)
     print("gridsearch")
     svm = grid_search.fit(tfidf_train, y_train)
@@ -76,7 +75,10 @@ def train(max_len: int):
     print("Best params:")
     print(svm.best_params_)
 
-    saved_path = pickle.dumps(svm, Path(__file__).parents[1] / "saved_models", name=f"svm_tfidf_sklearn_{max_len}.sav")
+    saved_path = pickle.dumps(svm, Path(__file__).parents[1] / "saved_models", name=f"svm_tfidf_sklearn_{max_len}_check_linear.sav")
+
+    print(svm.coef_)
+    pickle.dumps(svm.coef_, str(Path(__file__).parents[1] / "results" / "coef_weights"))
 
 @click.command()
 @click.option("-l", "--max_len", type=click.INT, help="Max length of sentence to be allowed. Determines padding and truncation")
