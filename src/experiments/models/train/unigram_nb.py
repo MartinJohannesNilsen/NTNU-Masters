@@ -72,6 +72,11 @@ def train(max_len: int):
 
     tfidf = TfidfVectorizer().fit(x_train)
     tfidf_train = tfidf.transform(x_train).toarray()
+    print(tfidf_train[0])
+    print(len(tfidf_train[0]))
+    print(type(tfidf_train))
+    print(type(tfidf_train[0]))
+
 
     scoring = {'recall': make_scorer(recall_score), 'f1': make_scorer(f1_score), 'f2': make_scorer(fbeta_score, beta=2), 'precision': make_scorer(precision_score)}
 
