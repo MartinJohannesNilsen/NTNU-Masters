@@ -76,15 +76,15 @@ class MakeTorchData(torch.utils.data.Dataset):
         return len(self.labels)
 
 def train(
-        X: List, y: List, 
+        X: List, y: List,
         X_val: List = None, y_val: List = None, 
         X_test: List = None, y_test: List = None, 
         val_portion: float = 0.2, 
         max_length: int = 512, 
         model_name: str = "distilbert-base-uncased", 
-        num_epochs: int = 5, 
-        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert"), 
-        log_path: str = "./logs"
+        saved_model_checkpoints: str = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / "distilbert-base-uncased"), 
+        log_path: str = "./logs",
+        configs = {"epochs": 5, "train_batch_size": 32, "weight_decay": 0.01, "learning_rate": 1e-5}
         ):
 
     # Initialize device
@@ -118,11 +118,11 @@ def train(
     training_args = TrainingArguments(
         output_dir = saved_model_checkpoints,          
         logging_dir = log_path,            
-        num_train_epochs = num_epochs,     
-        per_device_train_batch_size = 32, # 16, 32, 64   
-        per_device_eval_batch_size = 64,   
-        weight_decay = 0.01,               
-        learning_rate = 2e-5,
+        per_device_eval_batch_size = 64,
+        per_device_train_batch_size = configs["train_batch_size"],
+        num_train_epochs = configs["epochs"],     
+        weight_decay = configs["weight_decay"],
+        learning_rate = configs["learning_rate"],
         save_total_limit = 10,
         load_best_model_at_end = True,     
         metric_for_best_model = 'rmse',    
@@ -145,7 +145,10 @@ def train(
     trainer.evaluate()
 
     # Trainer test metrics
-    if X_test and y_test:
+    if X_test is not None and y_test is not None:
+        print("-"*30)
+        print("Evaluation on test dataset: ")
+        print("-"*30)
         test_encodings = tokenizer(X_test, truncation=True, padding=True, max_length=max_length)
         test_dataset = MakeTorchData(test_encodings, y_test.ravel())
         trainer.eval_dataset = test_dataset
@@ -159,10 +162,8 @@ click.option = partial(click.option, show_default=True)
 @click.option("-d", "--dataset", type=click.Choice(datasets.keys()), default="train_sliced_stair_twitter_256", help="Dataset to use")
 def main(model, size, dataset):
     # Parameters
-    VAL_PORTION = 0.2
     MAX_LENGTH = int(size)
-    NUM_EPOCHS = 5
-    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model / dataset)
+    SAVED_MODEL_PATH = str(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_classifier" / model / dataset)
     LOG_PATH = "./logs"
 
     # Data
@@ -175,11 +176,28 @@ def main(model, size, dataset):
     y_train = df_train.label.values
     X_val = df_val.text.values.tolist()
     y_val = df_val.label.values
-    
     X_test = df_test.text.values.tolist()
     y_test = df_test.label.values
 
-    train(X=X_train, y=y_train, X_val=X_val, y_val=y_val, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    # Define hyperparams
+    hyperparams = {"epochs": 5, "train_batch_size": 32, "weight_decay": 0.01, "learning_rate": 1e-5}
+
+    # From gridsearch
+    hyperparams_from_gridsearch = {
+        "albert-base-v2_256": {'epochs': 7, 'train_batch_size': 32, 'weight_decay': 0.0, 'learning_rate': 3e-05},
+        "albert-base-v2_512": {"epochs": 5, "train_batch_size": 32, "weight_decay": 0.01, "learning_rate": 2e-05},
+        "bert-base-uncased_256": {'epochs': 7, 'train_batch_size': 32, 'weight_decay': 0.01, 'learning_rate': 3e-05},
+        "bert-base-uncased_512": {"epochs": 7, "train_batch_size": 32, "weight_decay": 0.01, "learning_rate": 2e-05},
+        "distilbert-base-uncased_256": {'epochs': 7, 'train_batch_size': 32, 'weight_decay': 0.01, 'learning_rate': 3e-05},
+        "distilbert-base-uncased_512": {"epochs": 7, "train_batch_size": 32, "weight_decay": 0.0, "learning_rate": 3e-05},
+        "roberta-base_256": {'epochs': 7, 'train_batch_size': 64, 'weight_decay': 0.0, 'learning_rate': 2e-05},
+        "roberta-base_512": {"epochs": 10, "train_batch_size": 32, "weight_decay": 0.0, "learning_rate": 2e-05},
+    }
+    hyperparams = hyperparams_from_gridsearch[f"{model}_{size}"]
+    print("Hyperparams:", hyperparams)
+
+    # train(X=X_train, y=y_train, X_val=X_val, y_val=y_val, val_portion=VAL_PORTION, max_length=MAX_LENGTH, model_name=model, num_epochs=NUM_EPOCHS, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH)
+    train(X=X_train, y=y_train, X_val=X_val, y_val=y_val, X_test=X_test, y_test=y_test, max_length=MAX_LENGTH, model_name=model, saved_model_checkpoints=SAVED_MODEL_PATH, log_path=LOG_PATH, configs=hyperparams)
 
 if __name__ == "__main__":
     main()

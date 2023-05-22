@@ -4,7 +4,7 @@
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
 #SBATCH --time=96:00:00
-#SBATCH --mem=32G
+#SBATCH --mem=250000
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
@@ -12,6 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
+##SBATCH --export=model_path,test_path,output_path,threshold,list_of_thresholds
 #SBATCH --export=model_path,test_path,output_path
 
 WORKDIR=${SLURM_SUBMIT_DIR}
@@ -26,6 +27,7 @@ echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
+awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
 
 # Load idun modules
 module purge
@@ -47,10 +49,8 @@ echo "Running code"
 cd "src/experiments/models/test"
 
 # Run for loop of thresholds
-for i in $(seq 0 0.05 1)
-do
-    python test_sklearn.py $model_path $test_path --threshold $i --output $output_path
-done
+#python test_sklearn.py $model_path $test_path --threshold $threshold --list-of-thresholds $list_of_thresholds --output $output_path
+python test_sklearn.py $model_path $test_path --output $output_path
 
 # Print idun stats
 uname -a

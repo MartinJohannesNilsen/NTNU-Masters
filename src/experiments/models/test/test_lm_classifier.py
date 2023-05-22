@@ -7,14 +7,14 @@ from typing import List
 import click
 import numpy as np
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline, AutoConfig
 import pandas as pd
 from csv import QUOTE_NONE
 import csv
 csv.field_size_limit(sys.maxsize)
 experiments_dir = str(Path(os.path.abspath(__file__)).parents[3])
 sys.path.append(experiments_dir)
-from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, print_metrics_tabulated
+from experiments.utils.metrics import get_metrics, print_metrics_comprehensive, print_metrics_tabulated, print_metrics_simplified
 
 
 base_path = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test"
@@ -46,13 +46,23 @@ def inference(
         text: str, 
         classifier,
         output_scores = False,
-        max_length: int = 512
+        tokenizer_kwargs = None
         ):
 
-    # Forward pass
-    result = classifier(text)
-    score = result[0]['score'][1]
-    pred = result[0]['label']
+    classification_output = classifier(text, **tokenizer_kwargs)
+
+    # Extract label
+    label = classification_output[0]['label']
+    pred = 1 if label == "POSITIVE" else 0
+    # print(label)
+
+    # Extract score
+    # As this is the probability of being that label, we need to translate negative score to (1-negative) for 0.99 negative to be 0.01 positive. 
+    score = classification_output[0]['score']
+    if label == "NEGATIVE":
+        score = 1 - score
+    # print(score)
+
     if output_scores:
         return score
     else:
@@ -64,61 +74,82 @@ def test(
         labels: List[str], 
         classifier,
         output_scores = False,
-        thresholds: List[float] = [0.5],
-        max_length: int = 512
+        thresholds: List[float] = None,
+        tokenizer_kwargs = None
         ):
 
     # Forward pass for all texts
-    predictions = []
+    pred_labels = []
+    pred_scores = []
     
     for text in texts:
-        result = classifier(text)
-        score = result[0]['score'][1]
-        pred = result[0]['label']
-        if output_scores:
-            predictions.append(score)
-        else:
-            predictions.append(pred)
+        classification_output = classifier(text, **tokenizer_kwargs)
+
+        # Extract label
+        label = classification_output[0]['label']
+        pred = 1 if label == "POSITIVE" else 0
+        # print(label)
+
+        # Extract score
+        # As this is the probability of being that label, we need to translate negative score to (1-negative) for 0.99 negative to be 0.01 positive. 
+        score = classification_output[0]['score']
+        if label == "NEGATIVE":
+            score = 1 - score
+        # print(score)
+
+        pred_labels.append(pred)
+        pred_scores.append(score)
 
     table = []
     keys = []
-    for threshold in thresholds:
-        keys.append(f"T({threshold})")
-        table.append(get_metrics(predictions=[1 if pred >= threshold else 0 for pred in predictions], labels=labels))
-    print_metrics_tabulated(keys=keys, list_of_metrics=table)
+    if output_scores:
+        if thresholds is not None:
+            for threshold in thresholds:
+                keys.append(f"T({threshold})")
+                table.append(get_metrics(predictions=[1 if pred >= threshold else 0 for pred in pred_scores], labels=labels))
+            print_metrics_tabulated(keys=keys, list_of_metrics=table)
+        else:
+            print_metrics_simplified(get_metrics(predictions=[1 if pred >= 0.5 else 0 for pred in pred_scores], labels=labels))
+    else: 
+        print_metrics_simplified(get_metrics(predictions=pred_labels, labels=labels))
+    
+    return pred_labels, pred_scores
+    
 
 click.option = partial(click.option, show_default=True)
 @click.command()
-@click.option("-m", "--model", type=click.Choice(os.listdir(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor")), default="distilbert-base-uncased", help="Model from saved models")
-@click.option("-c", "--checkpoint", default="checkpoint-2130", help="Checkpoint to use")
-@click.option("-d", "--dataset", default="train_sliced_stair_twitter", help="Dataset used for fine-tuning")
-@click.option("-t", "--test-file", default="test_sliced_stair_twitter", help="Test file")
+@click.option("-m", "--model", type=click.Choice(os.listdir(Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_classifier")), default="distilbert-base-uncased", help="Model from saved models")
+@click.option("-c", "--checkpoint", default="final", help="Checkpoint to use")
+@click.option("-d", "--dataset", default="train_sliced_stair_twitter_512", help="Dataset used for fine-tuning")
+@click.option("-t", "--test-file", default="test_sliced_stair_twitter_512", help="Test file")
 @click.option("--max_len", default=512, help="Maximum length of texts")
 def main(model, checkpoint, dataset, test_file, max_len):
 
-    model_path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_regressor" / model
-    assert os.path.isdir(model_path / f"{dataset}_{max_len}" / checkpoint), "Checkpoint not existing!"
-    checkpoint = model_path / f"{dataset}_{max_len}" / checkpoint
+    model_name = model
+    model_path = Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "lm_classifier" / model_name
+    print(model_path / dataset / checkpoint)
+    assert os.path.isdir(model_path / dataset / checkpoint), "Checkpoint not existing!"
+    checkpoint = model_path / dataset / checkpoint
 
     # "inference", "test"
     method = "test"
 
     # Data
-    df = _get_dataframe(dataset=f"{test_file}_{max_len}")
+    df = _get_dataframe(dataset=f"{test_file}")
 
     if (method == "inference"):
         
         # Run inference
         text = "Are you going to detect me? :)"
-        print("Score:", inference(text, checkpoint=checkpoint, model_name=model, max_length=max_len))
+        print("Score:", inference(text, checkpoint=checkpoint, model_name=model_name))
     
 
     elif (method == "test"):
 
         # Initialize tokenizer and model
-        tokenizer = AutoTokenizer.from_pretrained(model)
-        saved_model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels = 2, local_files_only=True)
-        # model = torch.load(checkpoint)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels = 2, local_files_only=True)
+        tokenizer_kwargs = {'padding':True,'truncation':True,'max_length':max_len}
         classifier = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
         # Extract examples and labels (X and y)
@@ -126,11 +157,22 @@ def main(model, checkpoint, dataset, test_file, max_len):
         labels = list(df.label.values)
         
         # Set thresholds to run for
-        thresholds = np.round(np.arange(0.5, 0.601, 0.0025), 4)
+        # thresholds = np.round(np.arange(0.5, 0.601, 0.0025), 4)
+        thresholds = np.round(np.arange(0, 1.01, 0.05), 2)
         # thresholds = [0.5]
 
         # Run test
-        test(texts, labels, classifier, thresholds=thresholds, max_length = max_len)
+        # test(texts, labels, classifier, output_scores=True, thresholds=thresholds, tokenizer_kwargs=tokenizer_kwargs)
+        pred_labels, pred_scores = test(texts, labels, classifier, output_scores=True, tokenizer_kwargs=tokenizer_kwargs)
+
+        out_path = str(Path(os.path.abspath(__file__)).parent / "LM_files" / f"{model_name}_{max_len}.csv")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        with open(out_path, "w") as f:
+            f.write("idx,pred_val,pred_label,label\n")
+            
+            for i, (score, pred, label) in enumerate(zip(pred_scores, pred_labels, labels)):
+                f.write(f"{i},{score},{pred},{label}\n")
+
 
         
 if __name__ == "__main__":

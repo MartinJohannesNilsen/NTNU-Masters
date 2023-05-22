@@ -4,7 +4,7 @@
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
 #SBATCH --time=96:00:00
-#SBATCH --mem=32G
+#SBATCH --mem=100000
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes
@@ -47,10 +47,8 @@ echo "Running code"
 cd "src/experiments/models/test"
 
 # Run for loop of thresholds
-for i in $(seq 0 0.05 1)
-do
-    python test_sklearn.py $model_path $test_path --threshold $i --output $output_path
-done
+#python test_sklearn.py $model_path $test_path --threshold $i --output $output_path
+python test_sklearn.py $model_path $test_path --output $output_path
 
 # Print idun stats
 uname -a

@@ -44,13 +44,15 @@ def train(max_len: int):
         feature_names = np.array(tfidf.get_feature_names_out())[indices]
         unigrams = [v for v in feature_names if len(v.split(' ')) == 1]
         bigrams = [v for v in feature_names if len(v.split(' ')) == 2]
-
+        unigrams = [v for v in unigrams if v not in ["nan", "propname"]]
         """ unigrams = [word for word in unigrams if word not in unwanted_unigrams]
         bigrams = [sent for sent in bigrams if sent not in unwanted_bigrams] """
 
         print(f"Most correlated for {'non-shooter' if label == 0 else 'shooter'}")
-        print("  . Most correlated unigrams:\n. {}".format('\n. '.join(unigrams[-N:])))
-        print("  . Most correlated bigrams:\n. {}".format('\n. '.join(bigrams[-N:])))
+        print(f"Most correlated unigrams:")
+        [print(unigram) for unigram in unigrams[-N:]]
+        print(f"Most correlated bigrams:")
+        [print(bigram) for bigram in bigrams[-N:]]
 
 @click.command()
 @click.option("-l", "--max_len", type=click.INT, help="Max length of sentence to be allowed. Determines padding and truncation")

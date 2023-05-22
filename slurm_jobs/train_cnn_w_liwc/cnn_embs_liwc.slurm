@@ -1,18 +1,19 @@
 #!/bin/sh
-##SBATCH --partition=GPUQ
-#SBATCH --partition=CPUQ
+#SBATCH --partition=GPUQ
+##SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=200:00:00
+#SBATCH --time=160:00:00
 #SBATCH --mem=32000
 ##SBATCH --gres=gpu:1
-##SBATCH --constraint="A100"
+#SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=max_len
+#SBATCH --job-name=cnn_liwc
+#SBATCH --output=out/train_cnn_w_liwc/train_cnn_w_liwc.out
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -26,7 +27,6 @@ echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
-awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
 
 # Load idun modules
 module purge
@@ -46,8 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/train"
-echo "Recall-F1"
-python3 -u gs_svm_tfidf.py --max_len $max_len
+python3 -u train_cnn_w_liwc.py
 
 # Print idun stats
 uname -a

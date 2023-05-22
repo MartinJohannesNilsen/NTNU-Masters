@@ -12,7 +12,7 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=martijni@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=model,size,dataset,checkpoint
+#SBATCH --export=model,size,dataset,test_file,checkpoint
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -47,7 +47,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/test"
-python3 -u test_lm_regressor.py --model $model --max_len $size --dataset $dataset --checkpoint $checkpoint
+python3 -u test_lm_classifier.py --model $model --max_len $size --dataset $dataset --test-file $test_file --checkpoint $checkpoint
 
 # Print idun stats
 uname -a

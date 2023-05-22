@@ -4,6 +4,8 @@ wandb/
 out/
 embeddings/
 gs_results/
+gs_lm_results/
+logs/
 logs/
 
 .DS_Store
