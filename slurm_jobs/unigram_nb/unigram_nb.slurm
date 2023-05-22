@@ -3,7 +3,7 @@
 #SBATCH --partition=CPUQ
 ##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=200:00:00
+#SBATCH --time=167:00:00
 #SBATCH --mem=32000
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="A100"
@@ -12,7 +12,8 @@
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
 #SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH --export=max_len
+#SBATCH --job-name=unigram_nb
+#SBATCH --output=out/unigram_nb/unigram_nb_512.out
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -47,7 +48,7 @@ python -m nltk.downloader stopwords
 echo "Running code"
 cd "src/experiments/models/train"
 echo "Recall-F1"
-python3 -u gs_svm_tfidf.py --max_len $max_len
+python3 -u unigram_nb.py --max_len $max_len
 
 # Print idun stats
 uname -a
