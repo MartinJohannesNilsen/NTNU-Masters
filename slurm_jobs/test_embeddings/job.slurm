@@ -4,7 +4,7 @@
 ##SBATCH --partition=
 #SBATCH --account=share-ie-idi
 #SBATCH --time=96:00:00
-#SBATCH --mem=250000
+#SBATCH --mem=150000
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint="P100|V100"
 ##SBATCH --nodes=1                          # 1 compute nodes

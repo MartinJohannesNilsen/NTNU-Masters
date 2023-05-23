@@ -28,6 +28,23 @@ def run(model, size, variation):
     print(sbatch_cmd)
     subprocess.call(sbatch_cmd.split())
 
+def run_shooter_hold_out(model, size):
+    for model in models:
+        for size in sizes:
+            # Slurm properties
+            test_file = "shooter_hold_out"
+            job_name = uniquify(f"test_{model}_{test_file}_{size}")
+            out = uniquify(f"out/test_lm_scores/{model}_{test_file}_{size}.out")
+            # out = f"out/test_lm/{model}_{variation}_{size}.out"
+
+            # Python properties
+            dataset = f"train_sliced_stair_twitter_{size}"
+            test_file = f"{test_file}_{size}"
+            checkpoint = "final"
+            
+            sbatch_cmd = f"sbatch --job-name={job_name} --output={out} --export=model={model},size={size},dataset={dataset},test_file={test_file},checkpoint={checkpoint} slurm_jobs/test_lm/job.slurm"
+            print(sbatch_cmd)
+            subprocess.call(sbatch_cmd.split())
 
 def run_all_combinations(models, variations, sizes):
     for model in models:
@@ -45,8 +62,13 @@ if __name__ == "__main__":
     models = ["distilbert-base-uncased", "bert-base-uncased", "roberta-base", "albert-base-v2"]
     variations = ["train_sliced_stair_twitter"]
     sizes = ["512", "256"]
-    run_all_combinations(models, variations, sizes)
+    # run_all_combinations(models, variations, sizes)
     
     # Run again
     # runs = [model, size, variation]
     # run_again(runs)
+    
+    # Run shooter hold out
+    models = ["distilbert-base-uncased", "bert-base-uncased", "roberta-base", "albert-base-v2"]
+    sizes = ["512", "256"]
+    run_shooter_hold_out(models, sizes)

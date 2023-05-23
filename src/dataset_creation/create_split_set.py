@@ -90,18 +90,30 @@ if __name__ == "__main__":
     _find_field_size_limit()
 
     # Read all labeled data
-    data_folder = Path(os.path.abspath("")) / "data"
+    data_folder = Path(os.path.abspath(__file__)).parent / "data"
     out_folder = data_folder / "train_test" / "new"
 
-    df = pd.read_csv(data_folder / "all_labeled.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
-    randy_twitter_df = df[df["name"] == "stair twitter archive"]
-    randy_twitter_df["date"] = randy_twitter_df["date"].map(lambda a: make_datetime(a))
-    randy_twitter_drop_df = randy_twitter_df[randy_twitter_df["date"] < datetime(2016, 8, 13)]
+    task = "shooter_hold_out"
 
-    df = df.drop(randy_twitter_drop_df.index, axis=0)
-    write_to_file(df, "sliced_stair")
+    if task == "train_test_split":
+        df = pd.read_csv(data_folder / "original" / "all_labeled.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+        randy_twitter_df = df[df["name"] == "stair twitter archive"]
+        randy_twitter_df["date"] = randy_twitter_df["date"].map(lambda a: make_datetime(a))
+        randy_twitter_drop_df = randy_twitter_df[randy_twitter_df["date"] < datetime(2016, 8, 13)]
 
-    # No stair twitter
-    df = pd.read_csv(data_folder / "all_labeled.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
-    df = df.drop(randy_twitter_df.index, axis=0)
-    write_to_file(df, "no_stair")
+        df = df.drop(randy_twitter_drop_df.index, axis=0)
+        write_to_file(df, "sliced_stair")
+
+        # No stair twitter
+        df = pd.read_csv(data_folder / "original" / "all_labeled.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+        df = df.drop(randy_twitter_df.index, axis=0)
+        write_to_file(df, "no_stair")
+    
+    elif task == "shooter_hold_out":
+        df = pd.read_csv(data_folder / "original" / "shooter_hold_out.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+        split_256_df = make_split_df(df.copy(), 256)
+        split_256_df.to_csv(out_folder / f"shooter_hold_out_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+        split_512_df = make_split_df(df.copy(), 512)
+        split_512_df.to_csv(out_folder / f"shooter_hold_out_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+
+

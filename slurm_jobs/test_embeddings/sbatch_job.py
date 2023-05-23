@@ -18,7 +18,8 @@ def run(model, size, emb, padding):
 
     # Datasets
     train_dataset = "train_sliced_stair_twitter"
-    test_dataset = "test_sliced_stair_twitter"
+    # test_dataset = "test_sliced_stair_twitter"
+    test_dataset = "shooter_hold_out"
     emb_with_dim = 'glove_50' if emb == "glove_50" else f"{emb}_{'768' if emb == 'bert' else '300'}"
 
     # Slurm properties
@@ -27,7 +28,8 @@ def run(model, size, emb, padding):
 
     # Python properties
     model_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "models" / "saved_models" / model / "embeddings" / emb / f"{train_dataset}_{emb_with_dim}_{padding}_{size}" / "sklearn_model.sav")
-    test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / "new" / f"{test_dataset}_{emb_with_dim}_{padding}_{size}.h5")
+    # test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / "new" / f"{test_dataset}_{emb_with_dim}_{padding}_{size}.h5")
+    test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "embeddings" / f"{test_dataset}_{emb_with_dim}_{padding}_{size}.h5")
     out_path = str(Path(os.path.abspath(__file__)).parents[2] / "out" / "test_embeddings" / f"{model}_{size}" / "posts" / f"{test_dataset}_{emb}_{padding}_posts.out")
     
     # Run sbatch
