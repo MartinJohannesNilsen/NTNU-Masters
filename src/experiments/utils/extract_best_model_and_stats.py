@@ -66,8 +66,11 @@ def get_best_scoring_config(model_type, scoring):
     output_path = ""
     if model_type == "lstm":
         output_path = lstm_out_path
-    else:
+    elif model_type == "cnn":
         output_path = cnn_out_path
+    else:
+        output_path = Path(os.path.abspath(__file__)).parents[3] / "out" / "train_cnn_w_liwc"
+
     
     configs, scores, emb_types = extract_configs_and_results_list(output_path=output_path) 
 
