@@ -18,7 +18,7 @@ def run(model, liwc):
 
     # Datasets
     train_dataset = "train_sliced_stair_twitter_256_preprocessed"
-    test_dataset = "test_sliced_stair_twitter_256_preprocessed"
+    test_dataset = "shooter_hold_out_256"
 
     # Slurm properties
     job_name = uniquify(f"test_liwc_{train_dataset}_{model}_{test_dataset}_{liwc}")
@@ -26,7 +26,8 @@ def run(model, liwc):
 
     # Python properties
     model_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "models" / "saved_models" / model / "liwc" / liwc / train_dataset / "sklearn_model.sav")
-    test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "preprocessed" / "splits" / "h5" / liwc / f"{test_dataset}.h5")
+    # test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "preprocessed" / "splits" / "h5" / liwc / f"{test_dataset}.h5")
+    test_path = str(Path(os.path.abspath(__file__)).parents[2] / "src" / "experiments" / "features" / "liwc" / "shooter_hold_out" / "h5" / liwc / f"{test_dataset}.h5")
     out_path = str(Path(os.path.abspath(__file__)).parents[2] / "out" / f"test_liwc_{train_dataset}" / f"{model}_{test_dataset}_{liwc}_posts.out")
     
     # Run sbatch

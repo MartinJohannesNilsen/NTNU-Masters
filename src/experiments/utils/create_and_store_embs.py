@@ -27,6 +27,9 @@ name_to_dim = {
 
 def get_dfs():
     dfs = {
+        "shooter_hold_out_256": pd.read_csv(data_folder / "shooter_hold_out_256.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        "shooter_hold_out_512": pd.read_csv(data_folder / "shooter_hold_out_512.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
+        
         "train_sliced_stair_twitter_512": pd.read_csv(data_folder / "train_sliced_stair_twitter_512.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
         "train_sliced_stair_twitter_256": pd.read_csv(data_folder / "train_sliced_stair_twitter_256.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
         "test_sliced_stair_twitter_512": pd.read_csv(data_folder / "test_sliced_stair_twitter_512.csv", sep="‎", quoting=QUOTE_NONE, engine="python"),
@@ -226,13 +229,28 @@ def create_and_store_all_embs_of_type(dfs, emb_type: str, pad_pos = None, step_s
             create_and_store_embeddings(df, fpath=out_path / f"{p}_{st}_twitter_{emb_type}{name_to_dim[emb_type]}_{pad_pos}_{max_len}.h5", emb_model=emb_model, step_size=step_size, max_len=max_len, pad_pos=pad_pos, emb_type=emb_type)    
             df = None
 
+def create_and_store_shooter_hold_out_embs(dfs, emb_type: str, pad_pos = None, step_size: int = 200, max_len: int = 256):
+    """
+    Convenience function to perform all steps of creating embs and storing them
+
+    dfs: List of dataframes to be processed
+    emb_type: Embedding type to be used
+    """
+    assert emb_type in ["glove_50", "glove", "fasttext", "bert"], "Embedding type not supported!"
+
+    emb_model = get_emb_model(emb_type)
+    df = dfs[f"shooter_hold_out_{max_len}"].copy()
+    create_and_store_embeddings(df, fpath=out_path / f"shooter_hold_out_{emb_type}{name_to_dim[emb_type]}_{pad_pos}_{max_len}.h5", emb_model=emb_model, step_size=step_size, max_len=max_len, pad_pos=pad_pos, emb_type=emb_type)    
+
+
 @click.command()
 @click.option("-e", "--emb", type=click.Choice(["fasttext", "glove", "bert", "glove_50"]) , help="Embedding type to be used for training")
 @click.option("-l", "--length", type=click.INT, help="Max length of sequence")
 @click.option("-p", "--pad_pos", type=click.Choice(["head", "tail", "split"]), help="Position of padding")
 def main(emb, length, pad_pos):
     dfs = get_dfs()
-    create_and_store_all_embs_of_type(dfs, emb_type=emb, max_len=length, pad_pos=pad_pos, step_size=200)
+    # create_and_store_all_embs_of_type(dfs, emb_type=emb, max_len=length, pad_pos=pad_pos, step_size=200)
+    create_and_store_shooter_hold_out_embs(dfs, emb_type=emb, max_len=length, pad_pos=pad_pos, step_size=200)
 
 
 

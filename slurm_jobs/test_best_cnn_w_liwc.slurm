@@ -1,19 +1,19 @@
 #!/bin/sh
-##SBATCH --partition=GPUQ
-#SBATCH --partition=CPUQ
-##SBATCH --partition=
+#SBATCH --partition=GPUQ
+##SBATCH --partition=CPUQ
+##SBATCH --partition=short
 #SBATCH --account=share-ie-idi
-#SBATCH --time=96:00:00
-#SBATCH --mem=150000
-##SBATCH --gres=gpu:1
-##SBATCH --constraint="P100|V100"
+#SBATCH --time=5:00:00
+#SBATCH --mem=32000
+#SBATCH --gres=gpu:1
+##SBATCH --constraint="A100"
 ##SBATCH --nodes=1                          # 1 compute nodes
 ##SBATCH --ntasks-per-node=1                # 1 task per compute node
 ##SBATCH --cpus-per-task=2                  # 2 CPU cores
-#SBATCH --mail-user=martijni@stud.ntnu.no
+#SBATCH --mail-user=olejlia@stud.ntnu.no
 #SBATCH --mail-type=ALL
-##SBATCH --export=model_path,test_path,output_path,threshold,list_of_thresholds
-#SBATCH --export=model_path,test_path,output_path
+#SBATCH --job-name=test_best_cnn_w_liwc
+#SBATCH --output=out/test_best_cnn_W_liwc.out
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 
@@ -27,7 +27,6 @@ echo Number of nodes: $SLURM_JOB_NUM_NODES
 echo Cores: $SLURM_CPUS_ON_NODE
 echo Cores per node: $SLURM_CPUS_ON_NODE
 echo Number of tasks per core: $SLURM_NTASKS
-awk '/MemFree/ { printf "Allocated RAM: %.3fGB\n", $2/1024/1024 }' /proc/meminfo
 
 # Load idun modules
 module purge
@@ -47,10 +46,7 @@ python -m nltk.downloader stopwords
 # Run code
 echo "Running code"
 cd "src/experiments/models/test"
-
-# Run for loop of thresholds
-#python test_sklearn.py $model_path $test_path --threshold $threshold --list-of-thresholds $list_of_thresholds --output $output_path
-python test_sklearn.py $model_path $test_path --output $output_path
+python3 -u test_best_cnn_emb_liwc.py
 
 # Print idun stats
 uname -a

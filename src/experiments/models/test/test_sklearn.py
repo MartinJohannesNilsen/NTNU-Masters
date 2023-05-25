@@ -80,7 +80,7 @@ def test_liwc(model_path, test_path, batch_size: int = None):
 
 def _get_data_path_from_emb_path(emb_path: str):
     dataset_dir = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
-    purpose = "shooter_hold_out_test" if "hold_out_test" in emb_path else "test" if "test" in emb_path else "train"
+    purpose = "shooter_hold_out" if "shooter_hold_out" in emb_path else "test" if "test" in emb_path else "train"
     size = "_256" if "256" in emb_path else "_512"
     stair_twitter = "_no_stair_twitter" if "no_stair_twitter" in emb_path else "_sliced_stair_twitter" if "sliced_stair_twitter" in emb_path else ""
     file_path = str(dataset_dir / (purpose + stair_twitter + size + ".csv"))
@@ -149,6 +149,7 @@ def main(model_path, test_path, threshold, use_list_of_thresholds, output):
         return path
 
     def write_output(preds, labels, t, idxs = None, scores = None):
+        """
         # Get texts ordered by confusion matrix
         emb_text_path = _get_data_path_from_emb_path(test_path)
         emb_texts = get_texts_matching_tensors(test_path, emb_text_path)
@@ -162,6 +163,8 @@ def main(model_path, test_path, threshold, use_list_of_thresholds, output):
                 f.write(f"{'%'*10}\n{'%'*2}  {k}  {'%'*2}\n{'%'*10}\n")
                 f.writelines(line + "\n" for line in v)
                 f.writelines("\n")
+
+        """
         
         if idxs is not None and scores is not None:
             os.makedirs(os.path.dirname(output.replace("posts", "scores")), exist_ok=True)

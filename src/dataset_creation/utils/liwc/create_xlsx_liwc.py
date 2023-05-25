@@ -31,12 +31,13 @@ def _write_formatted_xlsx(df: pd.DataFrame, fname: str, out_dir: Path, create_di
 
 # data_dir = Path(os.path.abspath(__file__)).parents[3] / "data"
 preprocessed = True
-data_dir = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "liwc" / ('preprocessed' if preprocessed else "not_preprocessed") / "splits" / "_datasets"
+# data_dir = Path(os.path.abspath(__file__)).parents[3] / "experiments" / "features" / "liwc" / ('preprocessed' if preprocessed else "not_preprocessed") / "splits" / "_datasets"
+data_dir = Path(os.path.abspath(__file__)).parents[3] / "dataset_creation" / "data" / "train_test" / "new"
 
 def _store_xlsx(f_path):
     # Create path
     fname = Path(f_path).stem + ".xlsx"
-    out_dir = data_dir / "xlsx"
+    out_dir = (data_dir / "xlsx")
 
     # Read data
     df = pd.read_csv(f_path, sep="‎", quoting=QUOTE_NONE, engine="python")
@@ -44,7 +45,7 @@ def _store_xlsx(f_path):
     # Write xlsx file
     _write_formatted_xlsx(df=df, fname=fname, out_dir=out_dir)
 
-def main(path = data_dir / "csv"):
+def main(path = data_dir / "shooter_hold_out_256.csv"):
     
     if os.path.isdir(path):
         for file in os.listdir(path):
