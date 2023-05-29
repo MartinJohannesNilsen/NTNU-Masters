@@ -285,11 +285,11 @@ def test_model(model, config):
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     emb_str = f"{config['emb_type']}_{model_to_dim[config['emb_type']]}" if config['emb_type'] != "glove_50" else config['emb_type']
-    base_path_embs = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / "new"
-    test_path_embs = base_path_embs / f"test_sliced_stair_twitter_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
+    base_path_embs = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
+    test_path_embs = base_path_embs / f"shooter_hold_out_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
 
-    base_path_liwc = Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "preprocessed" / "splits" / "h5" / "2022"
-    test_path_liwc = base_path_liwc / f"test_sliced_stair_twitter_{config['max_len']}_preprocessed.h5"
+    base_path_liwc = Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "shooter_hold_out" / "2022" / "h5"
+    test_path_liwc = base_path_liwc / f"shooter_hold_out_{config['max_len']}.h5"
 
     test_set = TextDatasetH5py(test_path_embs, test_path_liwc)
     test_loader = DataLoader(test_set, batch_size=32, shuffle=False, pin_memory=True) 
@@ -336,7 +336,7 @@ if __name__ == "__main__":
 
     pred_values, pred_labels, true_labels = test_model(best_model, best_config)
 
-    cnn_out_path = Path(os.path.abspath(__file__)).parents[2] / "pred_values" / "cnn_w_liwc_preds.csv"
+    cnn_out_path = Path(os.path.abspath(__file__)).parents[2] / "pred_values" / "shooter_hold_out" / "cnn_w_liwc_preds.csv"
     cnn_df = pd.DataFrame({"pred_val": pred_values, "pred_label": pred_labels, "label": true_labels})
     cnn_df.to_csv(cnn_out_path, index=False)
 
