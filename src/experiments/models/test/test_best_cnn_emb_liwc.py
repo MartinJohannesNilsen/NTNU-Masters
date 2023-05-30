@@ -288,7 +288,7 @@ def test_model(model, config):
     base_path_embs = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
     test_path_embs = base_path_embs / f"shooter_hold_out_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
 
-    base_path_liwc = Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "shooter_hold_out" / "2022" / "h5"
+    base_path_liwc = Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "shooter_hold_out" / "h5" / "2022"
     test_path_liwc = base_path_liwc / f"shooter_hold_out_{config['max_len']}.h5"
 
     test_set = TextDatasetH5py(test_path_embs, test_path_liwc)
@@ -333,11 +333,9 @@ if __name__ == "__main__":
         lr=best_config["lr"]
     )
 
-
     pred_values, pred_labels, true_labels = test_model(best_model, best_config)
 
     cnn_out_path = Path(os.path.abspath(__file__)).parents[2] / "pred_values" / "shooter_hold_out" / "cnn_w_liwc_preds.csv"
     cnn_df = pd.DataFrame({"pred_val": pred_values, "pred_label": pred_labels, "label": true_labels})
     cnn_df.to_csv(cnn_out_path, index=False)
-
     torch.save(best_model.state_dict(), Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "best_cnn_emb_liwc.pt")
