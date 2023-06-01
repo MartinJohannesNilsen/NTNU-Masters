@@ -93,7 +93,7 @@ if __name__ == "__main__":
     data_folder = Path(os.path.abspath(__file__)).parent / "data"
     out_folder = data_folder / "train_test" / "new"
 
-    task = "shooter_hold_out"
+    task = "randy_stair_set"
 
     if task == "train_test_split":
         df = pd.read_csv(data_folder / "original" / "all_labeled.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
@@ -115,5 +115,16 @@ if __name__ == "__main__":
         split_256_df.to_csv(out_folder / f"shooter_hold_out_256.csv", sep="‎", quoting=QUOTE_NONE, index=False)
         split_512_df = make_split_df(df.copy(), 512)
         split_512_df.to_csv(out_folder / f"shooter_hold_out_512.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+
+    elif task == "randy_stair_set":
+        df = pd.read_csv(data_folder / "original" / "all_labeled.csv", sep="‎", quoting=QUOTE_NONE, engine="python")
+        randy_twitter_df = df[df["name"] == "stair twitter archive"]
+        randy_twitter_df["date"] = randy_twitter_df["date"].map(lambda a: make_datetime(a))
+        randy_twitter_drop_df = randy_twitter_df[randy_twitter_df["date"] < datetime(2016, 8, 13)]
+        final_randy_df = randy_twitter_df.drop(randy_twitter_drop_df.index, axis=0)
+
+        out_folder = Path(os.path.abspath(__file__)).parents[2] / "data" / "stair_twitter_archive"
+        final_randy_df.to_csv(out_folder / "final_used_stair_tweets.csv", sep="‎", quoting=QUOTE_NONE, index=False)
+
 
 
