@@ -1,4 +1,4 @@
 This folder contains the final school shooter data. Three files are included:
 - `final_used_stair_tweets.csv` includes 2051 tweets from Randy Stair
 - `school_shooters_original` includes 965 posts extracted from documents from "Shooter's words" on schoolshooters.info. We have asked Peter Langman for permission, and as the texts are in the public domain, we are aloud to publish the scraped data.
-- `shooter_hold_out` includes 9 posts, 6 fetched from "Shooter's words", and 3 fetched from a school shooters Twitter account. The school shooter of the final 3 posts is listed on schoolshooters.info, but the posts were taken from Twitter directly.
+- `shooter_hold_out` includes 9 posts, 5 fetched from "Shooter's words", and 4 fetched from a school shooters Twitter account. The school shooter of the final 4 posts is listed on schoolshooters.info, but the posts were taken from Twitter directly.
