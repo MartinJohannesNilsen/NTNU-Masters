@@ -30,11 +30,11 @@ def train(max_len: int):
     x_train = train_df["text"].values.astype('U')
     y_train = train_df["label"].values
 
-    tfidf = TfidfVectorizer(sublinear_tf=True, norm="l2", ngram_range=(1,2), stop_words="english")
+    tfidf = TfidfVectorizer(sublinear_tf=True, norm="l2", ngram_range=(1,1), stop_words="english")
     tfidf_train = tfidf.fit_transform(x_train).toarray()
     #tfidf_train = tfidf.transform(x_train).toarray()
 
-    unwanted_unigrams = ["mackenzie", "rachael", "andrew", "embersghostsquad", "egs", "rt", "mackenziewest"]
+    unwanted_unigrams = ["mackenzie", "rachael", "andrew", "embersghostsquad", "egs", "rt", "mackenziewest", "andrewblaze"]
     unwanted_bigrams = ["egs wiki", "ghost squad", "rachael shadows", "egs embersghostsquad", "fan art", "embersghostsquad egs", "mackenzie west"]
 
     N = 10
@@ -45,8 +45,8 @@ def train(max_len: int):
         unigrams = [v for v in feature_names if len(v.split(' ')) == 1]
         bigrams = [v for v in feature_names if len(v.split(' ')) == 2]
         unigrams = [v for v in unigrams if v not in ["nan", "propname"]]
-        """ unigrams = [word for word in unigrams if word not in unwanted_unigrams]
-        bigrams = [sent for sent in bigrams if sent not in unwanted_bigrams] """
+        unigrams = [word for word in unigrams if word not in unwanted_unigrams]
+        bigrams = [sent for sent in bigrams if sent not in unwanted_bigrams]
 
         print(f"Most correlated for {'non-shooter' if label == 0 else 'shooter'}")
         print(f"Most correlated unigrams:")

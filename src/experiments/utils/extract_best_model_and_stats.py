@@ -66,8 +66,11 @@ def get_best_scoring_config(model_type, scoring):
     output_path = ""
     if model_type == "lstm":
         output_path = lstm_out_path
-    else:
+    elif model_type == "cnn":
         output_path = cnn_out_path
+    else:
+        output_path = Path(os.path.abspath(__file__)).parents[3] / "out" / "train_cnn_w_liwc"
+
     
     configs, scores, emb_types = extract_configs_and_results_list(output_path=output_path) 
 
@@ -121,81 +124,31 @@ def to_csv(emb_types, configs, results, model_type: str):
 
     df.to_csv(str(out_path), index=False)
 
+def configs_to_csv(best_configs, model_type: str):
+    out_path = Path(os.path.abspath(__file__)).parents[1] / "models" / "results" / f"{model_type}_configs.csv"
+
+    configs = defaultdict(list)
+    for config in best_configs:
+        configs["emb_type"].append(config["emb_type"])
+        configs["max_len"].append(config["max_len"])
+        configs["pad_pos"].append(config["pad_pos"])
+        configs["dropout"].append(config["dropout"])
+        configs["lr"].append(config["lr"])
+        configs["batch_size"].append(config["batch_size"])
+        
+        if model_type == "lstm":
+            configs["hidden_size"].append(config["hidden_size"])
+            configs["num_layers"].append(config["num_layers"])
+
+    df = pd.DataFrame.from_dict(configs)
+    
+
+    df.to_csv(str(out_path), index=False)
+
 if __name__ == "__main__":
 
-    lstm_configs, lstm_results, lstm_emb_types = extract_configs_and_results_list(lstm_out_path)
-    to_csv(lstm_emb_types, lstm_configs, lstm_results, "lstm")
+    lstm_configs, _, _= extract_configs_and_results_list(lstm_out_path)
+    configs_to_csv(lstm_configs, "lstm")
 
-    cnn_configs, cnn_results, cnn_emb_types = extract_configs_and_results_list(cnn_out_path)
-    to_csv(cnn_emb_types, cnn_configs, cnn_results, "cnn")
-
-    """ lstm_results = extract_configs_and_results(lstm_out_path)
-    cnn_results = extract_configs_and_results(cnn_out_path)
-
-    best_lstm_bert = get_best_result_for_emb_type(lstm_results, "bert")
-    best_lstm_glove = get_best_result_for_emb_type(lstm_results, "glove")
-    best_lstm_glove_50 = get_best_result_for_emb_type(lstm_results, "glove_50")
-    best_lstm_fasttext = get_best_result_for_emb_type(lstm_results, "fasttext")
-
-    best_cnn_bert = get_best_result_for_emb_type(cnn_results, "bert")
-    best_cnn_glove = get_best_result_for_emb_type(cnn_results, "glove")
-    best_cnn_glove_50 = get_best_result_for_emb_type(cnn_results, "glove_50")
-    best_cnn_fasttext = get_best_result_for_emb_type(cnn_results, "fasttext")
-
-    print(f"best lstm bert:\n{best_lstm_bert}")
-    print(f"best lstm glove:\n{best_lstm_glove}")
-    print(f"best lstm glove_50:\n{best_lstm_glove_50}")
-    print(f"best lstm fasttext:\n{best_lstm_fasttext}")
-    print(f"best cnn bert:\n{best_cnn_bert}")
-    print(f"best cnn glove:\n{best_cnn_glove}")
-    print(f"best cnn glove_50:\n{best_cnn_glove_50}")
-    print(f"best cnn fasttext:\n{best_cnn_fasttext}") """
-
-    """ cnn_configs, cnn_results, cnn_emb_types = extract_configs_and_results(cnn_out_path)
-
-    print("CNN RESULTS AND CONFIGS")
-
-    for emb_type, config, results in zip(cnn_emb_types, cnn_configs, cnn_results):
-        print(f"emb: {emb_type}")
-        print(f"config: {config}")
-        print(f"results: {results}")
-
-    cnn_f2_scores = [res["f2_score"] for res in cnn_results]
-    best_cnn_f2_score = max(cnn_f2_scores)
-    idx_best_cnn_f2_score = cnn_f2_scores.index(best_cnn_f2_score)
-    print(f"Best: {best_cnn_f2_score} for {cnn_emb_types[idx_best_cnn_f2_score]} embeddings w config:\n{cnn_configs[idx_best_cnn_f2_score]}\nTotal results: {cnn_results[idx_best_cnn_f2_score]}")
-
-
-    print("LSTM RESULTS AND CONFIGS")
-
-    lstm_configs, lstm_results, lstm_emb_types = extract_configs_and_results(lstm_out_path)
-
-    for emb_type, config, results in zip(lstm_emb_types, lstm_configs, lstm_results):
-        print(f"emb: {emb_type}")
-        print(f"config: {config}")
-        print(f"results: {results}")
-
-    lstm_f2_scores = [res["f2_score"] for res in lstm_results]
-    best_lstm_f2_score = max(lstm_f2_scores)
-    idx_best_lstm_f2_score = lstm_f2_scores.index(best_lstm_f2_score)
-
-    print(f"Best: {best_lstm_f2_score} for {lstm_emb_types[idx_best_lstm_f2_score]} embeddings w config:\n{lstm_configs[idx_best_lstm_f2_score]}\nTotal results: {lstm_results[idx_best_lstm_f2_score]}")
- """
-    """ cnn_configs, cnn_results, cnn_emb_types = extract_configs_and_results(cnn_out_path)
-    
-    cnn_f2_scores = [res["f2_score"] for res in cnn_results]
-    best_cnn_f2_score = max(cnn_f2_scores)
-    idx_best_cnn_f2_score = cnn_f2_scores.index(best_cnn_f2_score)
-
-    print(cnn_f2_scores)
-    print(f"Best: {best_cnn_f2_score} for {cnn_emb_types[idx_best_cnn_f2_score]} embeddings w config:\n{cnn_configs[idx_best_cnn_f2_score]}\nTotal results: {cnn_results[idx_best_cnn_f2_score]}")
-
-    lstm_configs, lstm_results, lstm_emb_types = extract_configs_and_results(lstm_out_path)
-    
-    lstm_f2_scores = [res["f2_score"] for res in lstm_results]
-    best_lstm_f2_score = max(lstm_f2_scores)
-    idx_best_lstm_f2_score = lstm_f2_scores.index(best_lstm_f2_score)
-
-    print(lstm_f2_scores)
-    print(f"Best: {best_lstm_f2_score} for {lstm_emb_types[idx_best_lstm_f2_score]} embeddings w config:\n{lstm_configs[idx_best_lstm_f2_score]}\nTotal results: {lstm_results[idx_best_lstm_f2_score]}")
- """
+    cnn_configs, _, _ = extract_configs_and_results_list(cnn_out_path)
+    configs_to_csv(cnn_configs, "cnn")

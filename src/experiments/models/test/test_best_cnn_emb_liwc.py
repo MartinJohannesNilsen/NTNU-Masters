@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from ray import tune, get_gpu_ids
+from ray import tune
 from ray.air import session, RunConfig
 from ray.air.checkpoint import Checkpoint
 from ray.tune import CLIReporter
@@ -12,17 +12,26 @@ from ray.tune.experiment.trial import Trial
 from pathlib import Path
 import sys
 import os
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import h5py
 import click
 from sklearn.metrics import confusion_matrix, roc_auc_score
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import math
 sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
 from utils.extract_best_model_and_stats import get_best_scoring_config
+import pandas as pd
+from pathlib import Path
+import sys
+import os
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
+import h5py
+from sklearn.metrics import confusion_matrix, roc_auc_score
+sys.path.append(str(Path(os.path.abspath(__file__)).parents[2]))
+from utils.extract_best_model_and_stats import get_best_scoring_config
+
 
 def get_metrics(predictions, labels) -> dict:
     """Get a selection of performance metrics.
@@ -73,67 +82,77 @@ def get_metrics(predictions, labels) -> dict:
 
 # Hyperparam tuning made from guide by https://docs.ray.io/en/latest/tune/examples/tune-pytorch-cifar.html#tune-pytorch-cifar-ref
 
-class LSTMTextClassifier(nn.Module):
-    def __init__(self, emb_wts = None, emb_dim: int = 300, dropout: int = 0.5, hidden_size: int = 128, num_layers: int = 2):
-        super(LSTMTextClassifier, self).__init__()
+class TextClassifier(nn.Module):
+    def __init__(self, emb_dim: int = 300, filter_sizes = [3,4,5], num_filters = [100,100,100], dropout: int = 0.5, liwc_size: int = 122):
+        super(TextClassifier, self).__init__()
 
-        self.embedding = nn.Embedding.from_pretrained(torch.from_numpy(emb_wts).float()) if emb_wts else None
-        if emb_wts: self.embedding.weight.requires_grad = False
-        self.hidden_size = hidden_size
+        self.conv1d_list = nn.ModuleList([
+            nn.Conv1d(in_channels=emb_dim,
+                      out_channels=num_filters[i],
+                      kernel_size=filter_sizes[i])
+            for i in range(len(filter_sizes))
+        ])
 
-        self.lstm = nn.LSTM(emb_dim, hidden_size, num_layers, batch_first=True, bidirectional=True)
-        self.fc = nn.Linear(2*hidden_size, 1)
+        self.fc = nn.Linear(np.sum(num_filters) + liwc_size, 1)
         self.dropout = nn.Dropout(p=dropout)
-        self.sig = nn.Sigmoid()
+        self.sig = nn.Sigmoid() # Sigmoid to squeeze final vals between 0 and 1 to accomodate for binary class prob
 
-
-    def forward(self, emb_tensors, idx_first_hidden, idx_last_hidden):
+    def forward(self, embs, liwc):
         """Perform a forward pass through the network.
 
         Args:
-            x (torch.Tensor): A tensor of token ids with shape (batch_size, max_sent_length)
-            length: the length of the sequence before padding
+            input_ids (torch.Tensor): A tensor of token ids with shape
+                (batch_size, max_sent_length)
+
+        Returns:
+            logits (torch.Tensor): Output logits with shape (batch_size,
+                n_classes)
         """
-        out, _ = self.lstm(emb_tensors)
 
-        out_forward = out[range(len(out)), idx_last_hidden, :self.hidden_size] # Get output of last valid LSTM element, not padding
-        out_backwards = out[range(len(out)), idx_first_hidden, self.hidden_size:] # Output of first node thingy thangy
+        # Input shape: (b, max_len, embed_dim)
+        # Permute `x_embed` to match input shape requirement of `nn.Conv1d`.
+        # Output shape: (b, embed_dim, max_len)
+        x_reshaped = embs.permute(0, 2, 1)
 
-        out_reduced = torch.cat((out_forward, out_backwards), 1) # Concat for fc layer and final pred
-        out_dropped = self.dropout(out_reduced) # Dropout layer
-        out = self.fc(out_dropped)
+        # Apply CNN and ReLU. Output shape: (b, num_filters[i], L_out)
+        x_conv_list = [F.relu(conv1d(x_reshaped)) for conv1d in self.conv1d_list]
+
+        # Max pooling. Output shape: (b, num_filters[i], 1)
+        x_pool_list = [F.max_pool1d(x_conv, kernel_size=x_conv.shape[2])
+            for x_conv in x_conv_list]
+        
+        # Concatenate x_pool_list to feed the fully connected layer.
+        # Output shape: (b, sum(num_filters))
+        x_fc = torch.cat([x_pool.squeeze(dim=2) for x_pool in x_pool_list],
+                         dim=1)
+        x_fc = torch.cat((x_fc, liwc), 1)
+
+        # Output shape: (b, n_classes) ---> (b, 1)
+        out = self.fc(self.dropout(x_fc))
+
+        # Squeeze between values 0 and 1 (non-shooter and shooter)
         out = self.sig(out)
 
         return out
 
-# DATASETS
+
 class TextDatasetH5py(Dataset):
-    def __init__(self, emb_path, max_len, pad_pos):
+    def __init__(self, emb_path, liwc_path):
         self.emb_f = h5py.File(emb_path, "r")
-        self.max_len = max_len
-        self.pad_pos = pad_pos
+        self.liwc_f = h5py.File(liwc_path, "r")
+        self.liwc_dim = self.liwc_f["emb_tensor"][0].shape[0]
+        print(f"emb length: {self.emb_f['label'].shape}")
+        print(f"liwc length: {self.liwc_f['label'].shape}")
 
     def __len__(self):
-        return len(self.emb_f["label"])
-
+        return len(self.liwc_f["label"])
+        
     def __getitem__(self, i):
         embs = self.emb_f["emb_tensor"][i]
         label = self.emb_f["label"][i]
-        length = self.emb_f["length"][i]
+        liwc_scores = self.liwc_f["emb_tensor"][i]
 
-        start = 0
-        end = start + (length - 1)
-        if self.pad_pos == "head":
-            start = -length
-            end = -1
-        elif self.pad_pos == "split":
-            req_padding = self.max_len - length
-            start = math.floor(req_padding/2)
-            end = start + length - 1
-
-        #print(f"start: {start}, end: {end}, length: {length}")
-
-        return embs, label, start, end
+        return embs, liwc_scores, label
     
     def get_class_weights(self):
         labels = self.emb_f["label"]
@@ -149,9 +168,6 @@ class TextDatasetH5py(Dataset):
         return [non_shooter_wt, shooter_wt]
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-
 model_to_dim = {
     "glove_50": 50,
     "glove": 300,
@@ -159,28 +175,35 @@ model_to_dim = {
     "bert": 768
 }
 
+
 torch.manual_seed(0)
-def train(emb_dim: int, hidden_size: int, dropout: float, num_layers: int, emb_type: str, pad_pos: str, max_len: int, batch_size: int, lr: float):
+def train(emb_dim: int, dropout: float, emb_type: str, pad_pos: str, max_len: int, batch_size: int, lr: float):
+
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    #search_folder = create_search_run()
 
     emb_str = f"{emb_type}_{model_to_dim[emb_type]}" if emb_type != "glove_50" else emb_type
 
     base_path_embs = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings" / "new"
-    print(f"base_path: {base_path_embs}")
     train_path_embs = base_path_embs / f"train_sliced_stair_twitter_{emb_str}_{pad_pos}_{max_len}.h5"
     val_path_embs = base_path_embs / f"val_sliced_stair_twitter_{emb_str}_{pad_pos}_{max_len}.h5"
+
+    base_path_liwc = Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "preprocessed" / "splits" / "h5" / "2022"
+    train_path_liwc = base_path_liwc / f"train_sliced_stair_twitter_{max_len}_preprocessed.h5"
+    val_path_liwc = base_path_liwc / f"val_sliced_stair_twitter_{max_len}_preprocessed.h5"
+
+    print(f"base_path: {base_path_liwc}")
+    print(f"train_path: {train_path_liwc}")
+    print(f"val_path: {val_path_liwc}")
     
-    train_set = TextDatasetH5py(train_path_embs, max_len, pad_pos)
-    val_set = TextDatasetH5py(val_path_embs,  max_len, pad_pos)
+    train_set = TextDatasetH5py(train_path_embs, train_path_liwc)
+    val_set = TextDatasetH5py(val_path_embs, val_path_liwc)
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, pin_memory=True)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, pin_memory=True)
 
-    model = LSTMTextClassifier(emb_dim=emb_dim, hidden_size=hidden_size, dropout=dropout, num_layers=num_layers)
-    device = "cpu"
-    if torch.cuda.is_available():
-        device = "cuda:0"
-    model.to(device)
-    print(f"device: {device}")
+    model = TextClassifier(emb_dim=emb_dim, dropout=dropout, liwc_size=train_set.liwc_dim).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
     class_wts = train_set.get_class_weights()
@@ -190,7 +213,7 @@ def train(emb_dim: int, hidden_size: int, dropout: float, num_layers: int, emb_t
         running_loss = 0.0
         for i, data in enumerate(train_loader, 0):
             # get the inputs; data is a list of [inputs, labels]
-            emb_inputs, labels, start, end = data
+            emb_inputs, liwc_inputs, labels = data
 
             weighting = []
             for l in labels:
@@ -199,14 +222,14 @@ def train(emb_dim: int, hidden_size: int, dropout: float, num_layers: int, emb_t
                 else:
                     weighting.append(class_wts[1])
 
-            emb_inputs, labels, weighting = emb_inputs.to(device), labels.to(float).to(device), torch.tensor(weighting).to(device)
+            emb_inputs, liwc_inputs, labels, weighting = emb_inputs.to(device), liwc_inputs.to(device), labels.to(float).to(device), torch.tensor(weighting).to(device)
             criterion = nn.BCELoss(weight=weighting)
 
             # zero the parameter gradients
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(emb_inputs, start, end).to(float)
+            outputs = model(emb_inputs, liwc_inputs).to(float)
             loss = criterion(outputs.squeeze(dim=1), labels)
             loss.backward()
             optimizer.step()
@@ -219,13 +242,14 @@ def train(emb_dim: int, hidden_size: int, dropout: float, num_layers: int, emb_t
         # Validation loss
         val_loss = 0.0
         pred_vlabels = []
+        
         true_vlabels = []
         with torch.no_grad():
             for i, vdata in enumerate(val_loader, 0):
-                vemb_inputs, vlabels, vstart, vend = vdata
-                vemb_inputs, vlabels = vemb_inputs.to(device), vlabels.to(float).to(device)
+                vemb_inputs, vliwc_inputs, vlabels = vdata
+                vemb_inputs, vliwc_inputs, vlabels = vemb_inputs.to(device), vliwc_inputs.to(device), vlabels.to(float).to(device)
 
-                voutputs = model(vemb_inputs, vstart, vend).to(float)
+                voutputs = model(vemb_inputs, vliwc_inputs).to(float)
 
                 vweighting = []
                 for l in vlabels:
@@ -237,13 +261,13 @@ def train(emb_dim: int, hidden_size: int, dropout: float, num_layers: int, emb_t
 
                 criterion = nn.BCELoss(weight=vweighting)
                 vloss = criterion(voutputs.squeeze(dim=1), vlabels)
-                val_loss += vloss.item()
 
                 voutputs = voutputs.cpu()
                 vlabels = vlabels.cpu()
-
                 [true_vlabels.append(vlabel) for vlabel in vlabels]
                 [pred_vlabels.append(1) if pred > 0.5 else pred_vlabels.append(0) for pred in voutputs[0]]
+
+                val_loss += vloss.item()
 
         avg_vloss = val_loss/len(val_loader)    
 
@@ -264,7 +288,10 @@ def test_model(model, config):
     base_path_embs = Path(os.path.abspath(__file__)).parents[2] / "features" / "embeddings"
     test_path_embs = base_path_embs / f"shooter_hold_out_{emb_str}_{config['pad_pos']}_{config['max_len']}.h5"
 
-    test_set = TextDatasetH5py(test_path_embs, config["max_len"], config["pad_pos"])
+    base_path_liwc = Path(os.path.abspath(__file__)).parents[2] / "features" / "liwc" / "shooter_hold_out" / "h5" / "2022"
+    test_path_liwc = base_path_liwc / f"shooter_hold_out_{config['max_len']}.h5"
+
+    test_set = TextDatasetH5py(test_path_embs, test_path_liwc)
     test_loader = DataLoader(test_set, batch_size=32, shuffle=False, pin_memory=True) 
 
     true_labels = []
@@ -272,9 +299,9 @@ def test_model(model, config):
     pred_values = []
     with torch.no_grad():
         for data in test_loader:
-            emb_inputs, labels, start, end = data
-            emb_inputs, labels = emb_inputs.to(device), labels.to(device)
-            outputs = model(emb_inputs, start, end).to(float)
+            emb_inputs, liwc_inputs, labels = data
+            emb_inputs, liwc_inputs, labels = emb_inputs.to(device), liwc_inputs.to(device), labels.to(device)
+            outputs = model(emb_inputs, liwc_inputs).to(float)
 
             outputs = outputs.cpu()
             labels = labels.cpu()
@@ -283,25 +310,22 @@ def test_model(model, config):
             [pred_labels.append(1) if pred > 0.5 else pred_labels.append(0) for pred in outputs]
             [pred_values.append(output.item()) for output in outputs]
 
-
     metrics = get_metrics(pred_labels, true_labels)
     print(f"Best results with config:\n{config}")
     print(f"Got metrics: {metrics}")
+
     return pred_values, pred_labels, true_labels
-
-
+ 
 if __name__ == "__main__":
-    best_emb_type, best_config, best_score = get_best_scoring_config("lstm", "f2_score")
-    
+    best_emb_type, best_config, best_score = get_best_scoring_config("cnn_liwc", "f2_score")
+
     print(f"Best emb type: {best_emb_type}")
     print(f"Best config:\n{best_config}")
     print(f"Best score:\n{best_score}")
 
     best_model = train(
         emb_dim=best_config["emb_dim"],
-        hidden_size=best_config["hidden_size"],
         dropout=best_config["dropout"],
-        num_layers=best_config["num_layers"],
         emb_type=best_config["emb_type"],
         pad_pos=best_config["pad_pos"],
         max_len=best_config["max_len"],
@@ -311,6 +335,7 @@ if __name__ == "__main__":
 
     pred_values, pred_labels, true_labels = test_model(best_model, best_config)
 
-    lstm_out_path = Path(os.path.abspath(__file__)).parents[2] / "pred_values" / "shooter_hold_out" / "lstm_preds.csv"
-    lstm_df = pd.DataFrame({"pred_val": pred_values, "pred_label": pred_labels, "label": true_labels})
-    lstm_df.to_csv(lstm_out_path, index=False)
+    cnn_out_path = Path(os.path.abspath(__file__)).parents[2] / "pred_values" / "shooter_hold_out" / "cnn_w_liwc_preds.csv"
+    cnn_df = pd.DataFrame({"pred_val": pred_values, "pred_label": pred_labels, "label": true_labels})
+    cnn_df.to_csv(cnn_out_path, index=False)
+    torch.save(best_model.state_dict(), Path(os.path.abspath(__file__)).parents[1] / "saved_models" / "best_cnn_emb_liwc.pt")
