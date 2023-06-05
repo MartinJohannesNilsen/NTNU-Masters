@@ -58,5 +58,5 @@ if __name__ == "__main__":
     
     # Run oom killed again
     # runs = [['glove_50', 'svm', 'split', '256', 'train_sliced_stair_twitter']]
-    runs = [['bert_768', 'xgboost', 'tail', '256', 'train_sliced_stair_twitter']]
-    run_again(runs)
+    # runs = [['bert_768', 'xgboost', 'tail', '256', 'train_sliced_stair_twitter']]
+    # run_again(runs)
