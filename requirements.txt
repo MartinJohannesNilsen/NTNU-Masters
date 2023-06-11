@@ -1,0 +1,31 @@
+pandas
+numpy
+ipykernel
+python-dotenv
+tweepy
+tabulate
+click
+xlsxwriter
+lxml
+nltk
+pathlib
+torch
+torchtext
+datasets
+transformers
+scikit-learn
+matplotlib
+gensim
+beautifulsoup4
+wandb
+seaborn
+tabulate
+psutil
+tables
+h5py
+xgboost
+threadpoolctl==3.1.0 # Fix knn error
+protobuf==3.20.*
+ray[tune]
+joblib
+threadpoolctl==3.1.0 # Fix knn error
