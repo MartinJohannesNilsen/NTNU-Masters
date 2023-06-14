@@ -1,3 +1,5 @@
-# NTNU - M.Sc.
+# From Words to Weapons: Uncovering Potential School Shooters through Linguistic Cues in Written Posts
 
-Code for our Master's Thesis in Computer Science at NTNU.
+This repository contains the code submitted together with our Master's Thesis in Computer Science at NTNU in June of 2023.
+
+
