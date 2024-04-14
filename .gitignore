@@ -6,7 +6,7 @@ embeddings/
 gs_results/
 gs_lm_results/
 logs/
-logs/
+lib
 
 .DS_Store
 .vscode
